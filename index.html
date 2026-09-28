@@ -99,9 +99,24 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 .avatar{border-radius:2px}
 .modal{border-radius:2px;background:#080808;border-color:#444}
 
+
+.auth-screen{position:fixed;inset:0;background:#000;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px}.auth-screen.hidden{display:none}.auth-box{width:min(420px,100%);border:1px solid #333;background:#080808;padding:28px}.auth-logo{font-size:24px;font-weight:800;letter-spacing:-.03em}.auth-logo span{font-size:10px;color:#777;letter-spacing:.18em;margin-left:8px}.auth-desc{color:#777;font-size:12px;margin:8px 0 22px}.auth-box label{display:block;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin:12px 0 6px}.auth-box input{width:100%;box-sizing:border-box}.auth-box .btn{width:100%;margin-top:18px}.auth-error{min-height:18px;color:#e06b73;font-size:11px;margin-top:10px}.logout-btn{margin-top:10px;width:100%;font-size:10px}.loading-note{color:#777;font-size:11px;padding:18px}
 </style>
 </head>
 <body>
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">BadManners <span>CLAN CONTROL</span></div>
+    <div class="auth-desc">Вход в систему управления DKP</div>
+    <form id="loginForm">
+      <label>Email</label><input class="input" id="loginEmail" type="email" autocomplete="email" required>
+      <label>Пароль</label><input class="input" id="loginPassword" type="password" autocomplete="current-password" required>
+      <button class="btn primary" id="loginBtn" type="submit">Войти</button>
+      <div class="auth-error" id="authError"></div>
+    </form>
+  </div>
+</div>
+
 <div class="app">
   <aside class="sidebar">
     <div class="brand"><b>BadManners</b><span>DKP MANAGER • CLAN SYSTEM</span></div>
@@ -116,21 +131,22 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
       <button data-page="ranking">♛ &nbsp; Рейтинг</button>
     </nav>
     <div class="userbox">
-      <div class="userrow"><div class="avatar">AD</div><div><div class="name">Andrey</div><div class="role">ADMIN • 248.6 DKP</div></div></div>
+      <div class="userrow"><div class="avatar" id="userAvatar">--</div><div><div class="name" id="userName">—</div><div class="role" id="userRole">—</div></div></div>
+      <button class="btn logout-btn" onclick="logout()">Выйти</button>
     </div>
   </aside>
 
   <main class="main">
-    <header class="topbar"><div class="top-brand"><span class="bm-mark">BM</span><span class="bm-logo">BadManners</span><span class="bm-clan">CLAN</span><span class="bm-sep">/</span><div class="top-title" id="topTitle">Главная</div></div><div class="server"><span class="dot"></span> Система работает • 12.08.2026</div></header>
+    <header class="topbar"><div class="top-brand"><span class="bm-mark">BM</span><span class="bm-logo">BadManners</span><span class="bm-clan">CLAN</span><span class="bm-sep">/</span><div class="top-title" id="topTitle">Главная</div></div><div class="server"><span class="dot"></span> <span id="serverStatus">Supabase подключён</span></div></header>
     <div class="content">
 
       <section class="page active" id="dashboard">
         <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Главная</h1><div class="subtitle">Сводка клана и последние изменения DKP.</div>
         <div class="grid stats">
-          <div class="card stat"><div class="label">Мой DKP</div><div class="value cyan">248.6</div><div class="sub">#4 в рейтинге</div></div>
+          <div class="card stat"><div class="label">Мой DKP</div><div class="value cyan" id="myDkp">0</div><div class="sub" id="myRank">—</div></div>
           <div class="card stat"><div class="label">Посещаемость</div><div class="value positive">87%</div><div class="sub">за последние 30 дней</div></div>
-          <div class="card stat"><div class="label">Активные игроки</div><div class="value">24</div><div class="sub">из 27 участников</div></div>
-          <div class="card stat"><div class="label">Лут за месяц</div><div class="value yellow">18</div><div class="sub">выданных предметов</div></div>
+          <div class="card stat"><div class="label">Активные игроки</div><div class="value" id="activePlayers">0</div><div class="sub" id="totalPlayers">из 0 участников</div></div>
+          <div class="card stat"><div class="label">Лут всего</div><div class="value yellow" id="lootCount">0</div><div class="sub">выданных предметов</div></div>
         </div>
         <div class="grid two">
           <div>
@@ -181,8 +197,13 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const players=[
+const SUPABASE_URL="https://ikghimwmqgqjsaeoxbnj.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_a_eu-V76-XmhI9UVBIvuww_2JcCfu2H";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let currentUser=null,currentProfile=null;
+let players=[
  {id:1,name:"Andrey",class:"Accretia",dkp:248.6,att:87,loot:4},
  {id:2,name:"Raptor",class:"Bellato",dkp:412.8,att:94,loot:3},
  {id:3,name:"Maks",class:"Cora",dkp:361.4,att:91,loot:2},
@@ -192,7 +213,7 @@ const players=[
  {id:7,name:"Vortex",class:"Accretia",dkp:159.8,att:72,loot:1},
  {id:8,name:"Revenant",class:"Bellato",dkp:133.4,att:68,loot:0}
 ];
-const events=[
+let events=[
  {id:1,name:"Заставные Пит-Боссы",type:"boss",start:"2026-08-12 00:00",end:"00:45",status:"Принято",count:7,dkp:14,people:["Andrey","Raptor","Maks","KillerOne","Nexus","Vortex","Revenant"]},
  {id:2,name:"Малый респ",type:"boss",start:"2026-08-12 00:00",end:"00:45",status:"Принято",count:3,dkp:12,people:["Andrey","Raptor","Maks"]},
  {id:3,name:"Элан Пит-Боссы",type:"boss",start:"2026-08-11 20:00",end:"22:00",status:"Принято",count:7,dkp:110,people:["Raptor","Maks","KillerOne","Nexus","Sanya","Vortex","Revenant"]},
@@ -203,13 +224,13 @@ const events=[
  {id:8,name:"Заставные Пит-Боссы",type:"boss",start:"2026-08-10 00:00",end:"00:45",status:"Ожидает решения",count:6,dkp:12,people:["Andrey","Raptor","Maks","KillerOne","Nexus","Sanya"]},
  {id:9,name:"ChipWar",type:"cw",start:"2026-08-09 22:30",end:"23:00",status:"Ожидает решения",count:1,dkp:.4,people:["Andrey"]}
 ];
-const loot=[
+let loot=[
  {id:1,item:"Меч Акрэции",rarity:"Rare",source:"Элан Пит-Боссы",date:"12.08.2026",winner:"Raptor",price:150,status:"Выдан"},
  {id:2,item:"Доспех Архангела",rarity:"Epic",source:"Заставные Пит-Боссы",date:"11.08.2026",winner:"Maks",price:90,status:"Выдан"},
  {id:3,item:"Кольцо Владыки",rarity:"Rare",source:"ChipWar",date:"10.08.2026",winner:"Andrey",price:65,status:"Выдан"},
  {id:4,item:"Посох Элана",rarity:"Epic",source:"Элан Пит-Боссы",date:"11.08.2026",winner:"—",price:120,status:"Ожидает"}
 ];
-const history=[
+let history=[
  ["12.08.2026 00:45","Andrey","Заставные Пит-Боссы","+14"],
  ["12.08.2026 00:45","Raptor","Заставные Пит-Боссы","+14"],
  ["12.08.2026 00:45","Maks","Заставные Пит-Боссы","+14"],
@@ -280,7 +301,41 @@ function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t
 function newEvent(){showModal("Создать событие","Демо-форма — база данных будет подключена на следующем этапе",`<div class="form-grid"><div class="field full"><label>Название</label><input class="input" style="width:100%" value="Заставные Пит-Боссы"></div><div class="field"><label>Начало</label><input class="input" style="width:100%" type="datetime-local" value="2026-08-12T01:00"></div><div class="field"><label>Окончание</label><input class="input" style="width:100%" type="time" value="01:45"></div><div class="field"><label>DKP</label><input class="input" style="width:100%" value="14"></div><div class="field"><label>Статус</label><select class="select" style="width:100%"><option>Ожидает решения</option><option>Принято</option></select></div></div><div style="margin-top:18px;display:flex;gap:8px"><button class="btn primary" onclick="toast('Событие создано в режиме прототипа');closeModal()">Создать</button><button class="btn" onclick="closeModal()">Отмена</button></div>`)}
 function newLoot(){showModal("Добавить лут","Демо-форма",`<div class="form-grid"><div class="field full"><label>Предмет</label><input class="input" style="width:100%" placeholder="Название предмета"></div><div class="field"><label>Источник</label><input class="input" style="width:100%" value="Элан Пит-Босс"></div><div class="field"><label>Стоимость DKP</label><input class="input" style="width:100%" value="100"></div></div><div style="margin-top:18px"><button class="btn primary" onclick="toast('Предмет добавлен в режиме прототипа');closeModal()">Добавить</button></div>`)}
 
-renderDashboard();renderEvents();renderPlayers();renderLoot();renderHistory();
+async function loadData(){
+ const [pr,tx,ev,ep,lt]=await Promise.all([
+  db.from("players").select("id,nickname,character_name,race,class,status,created_at"),
+  db.from("dkp_transactions").select("id,player_id,amount,reason,created_at").order("created_at",{ascending:false}),
+  db.from("events").select("id,name,description,event_date,default_dkp,status,created_at").order("event_date",{ascending:false}),
+  db.from("event_participants").select("event_id,player_id,dkp_amount"),
+  db.from("loot").select("id,name,description,cost,status,winner_id,awarded_at,created_at").order("created_at",{ascending:false})
+ ]);
+ const err=[pr,tx,ev,ep,lt].find(x=>x.error)?.error;if(err) throw err;
+ const txs=tx.data||[], parts=ep.data||[], rawPlayers=pr.data||[];
+ const balances={};txs.forEach(t=>balances[t.player_id]=(balances[t.player_id]||0)+Number(t.amount||0));
+ const lootWins={};(lt.data||[]).forEach(x=>{if(x.winner_id)lootWins[x.winner_id]=(lootWins[x.winner_id]||0)+1});
+ players=rawPlayers.map(p=>({id:p.id,name:p.nickname||p.character_name||`#${p.id}`,class:[p.race,p.class].filter(Boolean).join(" / ")||"—",dkp:balances[p.id]||0,att:0,loot:lootWins[p.id]||0,status:p.status}));
+ events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:ps.map(x=>players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`)}});
+ loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":"Ожидает"}));
+ history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
+ document.getElementById("activePlayers").textContent=players.filter(p=>p.status==="active").length;
+ document.getElementById("totalPlayers").textContent=`из ${players.length} участников`;
+ document.getElementById("lootCount").textContent=loot.filter(x=>x.status==="Выдан").length;
+ const me=players.find(p=>p.id===currentProfile?.player_id);document.getElementById("myDkp").textContent=me?fmt(me.dkp):"0";
+ const sorted=[...players].sort((a,b)=>b.dkp-a.dkp),pos=me?sorted.findIndex(p=>p.id===me.id)+1:0;document.getElementById("myRank").textContent=pos?`#${pos} в рейтинге`:"профиль не связан с игроком";
+ renderDashboard();renderEvents();renderPlayers();renderLoot();renderHistory();
+}
+function fmtDate(v){if(!v)return"—";const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+async function openSession(session){
+ currentUser=session?.user||null;if(!currentUser){document.getElementById("authScreen").classList.remove("hidden");return}
+ const {data,error}=await db.from("profiles").select("id,nickname,role,player_id").eq("id",currentUser.id).single();
+ if(error||!data){await db.auth.signOut();document.getElementById("authError").textContent="Для пользователя не найден профиль в таблице profiles.";return}
+ currentProfile=data;document.getElementById("userName").textContent=data.nickname||currentUser.email;document.getElementById("userAvatar").textContent=initials(data.nickname||"BM");document.getElementById("userRole").textContent=(data.role||"player").toUpperCase();document.getElementById("authScreen").classList.add("hidden");
+ try{await loadData()}catch(e){toast("Ошибка загрузки: "+e.message)}
+}
+async function logout(){await db.auth.signOut();location.reload()}
+document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();const btn=document.getElementById("loginBtn"),err=document.getElementById("authError");btn.disabled=true;btn.textContent="Вход...";err.textContent="";const {data,error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});btn.disabled=false;btn.textContent="Войти";if(error){err.textContent="Не удалось войти: "+error.message;return}await openSession(data.session)});
+(async()=>{const {data}=await db.auth.getSession();await openSession(data.session)})();
+
 </script>
 </body>
 </html>
