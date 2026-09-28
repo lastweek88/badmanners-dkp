@@ -173,9 +173,12 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
       </section>
 
       <section class="page" id="loot">
-        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Лут</h1><div class="subtitle">История распределения предметов и их стоимость в DKP.</div>
-        <div class="toolbar"><div class="filters"><input class="input" id="lootSearch" placeholder="Поиск предмета..." oninput="renderLoot()"><select class="select"><option>Все предметы</option><option>Выдан</option><option>Ожидает распределения</option></select></div><button class="btn primary" onclick="newLoot()">+ Добавить лут</button></div>
-        <div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Источник</th><th>Дата</th><th>Победитель</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootTable"></tbody></table></div>
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Лут</h1><div class="subtitle">Каталог предметов и история выдачи с автоматическим списанием DKP.</div>
+        <div class="toolbar"><div class="filters"><input class="input" id="lootSearch" placeholder="Поиск по истории..." oninput="renderLoot()"></div><div class="actions"><button class="btn staff-only" onclick="newLootItem()">+ Предмет в каталог</button><button class="btn primary staff-only" onclick="newLoot()">Выдать лут</button></div></div>
+        <div class="section-head"><h2>История выдачи</h2></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Категория / параметры</th><th>Дата</th><th>Получатель</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootTable"></tbody></table></div>
+        <div class="section-head" style="margin-top:22px"><h2>Каталог предметов</h2><span class="sub" id="catalogCount"></span></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Название</th><th>Категория</th><th>Тип</th><th>Грейд</th><th>Заточка</th><th>Раса</th><th>Уровень</th><th>Базовая цена</th></tr></thead><tbody id="catalogTable"></tbody></table></div>
       </section>
 
       <section class="page" id="history">
@@ -206,6 +209,7 @@ let currentUser=null,currentProfile=null;
 let players=[];
 let events=[];
 let loot=[];
+let lootItems=[];
 let history=[];
 
 function initials(name){return name.slice(0,2).toUpperCase()}
@@ -249,7 +253,11 @@ function renderPlayers(){
 
 function renderLoot(){
  const q=(document.getElementById("lootSearch").value||"").toLowerCase();
- document.getElementById("lootTable").innerHTML=loot.filter(x=>x.item.toLowerCase().includes(q)).map(x=>`<tr><td><div class="item">${x.item}</div><div class="rarity">${x.rarity}</div></td><td>${x.source}</td><td>${x.date}</td><td>${x.winner}</td><td class="price">${fmt(x.price)}</td><td><span class="badge ${x.status==="Выдан"?"accepted":"pending"}">${x.status}</span></td><td><button class="btn" onclick="lootDetails(${x.id})">Подробнее</button></td></tr>`).join("");
+ const rows=loot.filter(x=>(x.item+" "+x.source+" "+x.winner).toLowerCase().includes(q));
+ document.getElementById("lootTable").innerHTML=rows.length?rows.map(x=>`<tr><td><div class="item">${esc(x.item)}</div></td><td>${esc(x.source||"—")}</td><td>${esc(x.date)}</td><td><b>${esc(x.winner)}</b></td><td class="price">${fmt(x.price)} DKP</td><td><span class="badge accepted">Выдан</span></td><td><button class="btn" onclick="lootDetails(${x.id})">Подробнее</button></td></tr>`).join(""):'<tr><td colspan="7" class="empty">Лут пока не выдавался.</td></tr>';
+ const catName={armor:"Броня",weapon:"Оружие",accessory:"Аксессуары"};
+ document.getElementById("catalogCount").textContent=`${lootItems.length} предметов`;
+ document.getElementById("catalogTable").innerHTML=lootItems.length?lootItems.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${catName[x.category]||esc(x.category)}</td><td>${esc(x.item_type)}</td><td>${esc(x.grade||"—")}</td><td>${x.enhancement===null||x.enhancement===undefined?"—":x.enhancement===0?"0":"+"+x.enhancement}</td><td>${esc(x.race)}</td><td>${x.item_level??"—"}</td><td class="cyan"><b>${fmt(x.default_cost)} DKP</b></td></tr>`).join(""):'<tr><td colspan="8" class="empty">Каталог пуст. Admin/Officer может добавить первый предмет.</td></tr>';
 }
 function renderHistory(){
  document.getElementById("historyTable").innerHTML=history.length?history.map(r=>`<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b></td><td>${esc(r[2])}</td><td class="${r[3].startsWith("+")?"positive":"yellow"}"><b>${esc(r[3])}</b></td></tr>`).join(""):'<tr><td colspan="4" class="empty">Операций DKP пока нет.</td></tr>';
@@ -286,6 +294,7 @@ async function saveDkpTransaction(e,playerId){
  if(!Number.isInteger(raw)||raw<=0)return toast("DKP должно быть целым числом больше 0");
  if(!reason)return toast("Укажите причину операции");
  const amount=mode==="subtract"?-raw:raw;
+ if(amount<0 && p.dkp+amount<0)return toast(`Недостаточно DKP. Баланс: ${fmt(p.dkp)}`);
  const btn=document.getElementById("dkpSaveBtn");btn.disabled=true;btn.textContent="Сохранение...";
  const {error}=await db.from("dkp_transactions").insert({player_id:playerId,amount,reason,created_by:currentUser.id});
  if(error){btn.disabled=false;btn.textContent="Сохранить операцию";return toast("Ошибка: "+error.message)}
@@ -344,23 +353,54 @@ async function saveEvent(e){
  if(error){btn.disabled=false;btn.textContent="Создать событие";toast("Ошибка: "+error.message);return}
  closeModal();toast("Событие создано, DKP начислены");await loadData();go("events");
 }
-function newLoot(){showModal("Добавить лут","Демо-форма",`<div class="form-grid"><div class="field full"><label>Предмет</label><input class="input" style="width:100%" placeholder="Название предмета"></div><div class="field"><label>Источник</label><input class="input" style="width:100%" value="Элан Пит-Босс"></div><div class="field"><label>Стоимость DKP</label><input class="input" style="width:100%" value="100"></div></div><div style="margin-top:18px"><button class="btn primary" onclick="toast('Предмет добавлен в режиме прототипа');closeModal()">Добавить</button></div>`)}
+function newLootItem(){
+ if(!canManagePlayers())return toast("Недостаточно прав");
+ showModal("Предмет в каталог","Заполните характеристики один раз — затем предмет можно выдавать многократно",`<form onsubmit="saveLootItem(event)"><div class="form-grid"><div class="field full"><label>Название *</label><input class="input" id="liName" style="width:100%" maxlength="120" required placeholder="Название предмета"></div><div class="field"><label>Категория *</label><select class="select" id="liCategory" style="width:100%" onchange="updateLootItemFields()"><option value="armor">Броня</option><option value="weapon">Оружие</option><option value="accessory">Аксессуары</option></select></div><div class="field"><label>Тип *</label><select class="select" id="liType" style="width:100%"></select></div><div class="field" id="liGradeField"><label>Грейд *</label><select class="select" id="liGrade" style="width:100%"></select></div><div class="field" id="liEnhField"><label>Заточка *</label><select class="select" id="liEnh" style="width:100%">${[0,1,2,3,4,5,6,7].map(n=>`<option value="${n}">${n?"+"+n:"0"}</option>`).join("")}</select></div><div class="field"><label>Раса *</label><select class="select" id="liRace" style="width:100%"><option>All</option><option>Accretia</option><option>Bellato</option><option>Cora</option></select></div><div class="field"><label>Уровень</label><input class="input" id="liLevel" type="number" min="1" step="1" style="width:100%" placeholder="Например: 55"></div><div class="field"><label>Базовая стоимость DKP *</label><input class="input" id="liCost" type="number" min="0" step="1" value="0" required style="width:100%"></div><div class="field full"><label>Комментарий</label><input class="input" id="liNotes" maxlength="200" style="width:100%" placeholder="Необязательно"></div></div><div style="margin-top:18px" class="actions"><button class="btn primary" id="liSaveBtn" type="submit">Добавить в каталог</button><button class="btn" type="button" onclick="closeModal()">Отмена</button></div></form>`);updateLootItemFields();
+}
+function updateLootItemFields(){
+ const c=document.getElementById("liCategory")?.value;if(!c)return;
+ const types={armor:["Торс","Голова","Ноги","Ступни","Руки"],weapon:["Однорук","Двурук","Булава","Топор","Копа","Лук","Пулик","ПУ","Посох","Нож"],accessory:["Кольцо","Реликвия","Антиграв","Амулет"]};
+ const grades={armor:["Белая","Инт","Тип C","СП","Палмас","Реликт"],weapon:["Тип A","Инт","Тип C","Леон","Реликт","Эланка"]};
+ document.getElementById("liType").innerHTML=types[c].map(x=>`<option>${x}</option>`).join("");
+ const acc=c==="accessory";document.getElementById("liGradeField").style.display=acc?"none":"";document.getElementById("liEnhField").style.display=acc?"none":"";
+ document.getElementById("liGrade").innerHTML=acc?"":grades[c].map(x=>`<option>${x}</option>`).join("");
+}
+async function saveLootItem(e){
+ e.preventDefault();if(!canManagePlayers())return toast("Недостаточно прав");
+ const category=document.getElementById("liCategory").value, acc=category==="accessory";
+ const payload={name:document.getElementById("liName").value.trim(),category,item_type:document.getElementById("liType").value,grade:acc?null:document.getElementById("liGrade").value,enhancement:acc?null:Number(document.getElementById("liEnh").value),race:document.getElementById("liRace").value,item_level:document.getElementById("liLevel").value?Number(document.getElementById("liLevel").value):null,default_cost:Number(document.getElementById("liCost").value),notes:document.getElementById("liNotes").value.trim()||null,created_by:currentUser.id};
+ if(!payload.name)return toast("Укажите название");if(!Number.isInteger(payload.default_cost)||payload.default_cost<0)return toast("Проверьте стоимость DKP");
+ const btn=document.getElementById("liSaveBtn");btn.disabled=true;btn.textContent="Сохранение...";const {error}=await db.from("loot_items").insert(payload);if(error){btn.disabled=false;btn.textContent="Добавить в каталог";return toast("Ошибка: "+error.message)}closeModal();toast("Предмет добавлен в каталог");await loadData();go("loot");
+}
+function newLoot(){
+ if(!canManagePlayers())return toast("Недостаточно прав");if(!lootItems.length)return toast("Сначала добавьте предмет в каталог");
+ const active=players.filter(p=>p.status==="active").sort((a,b)=>a.name.localeCompare(b.name,"ru"));if(!active.length)return toast("Нет активных игроков");
+ showModal("Выдать лут","DKP спишутся автоматически. Уйти в отрицательный баланс нельзя.",`<form onsubmit="awardLoot(event)"><div class="form-grid"><div class="field full"><label>Предмет *</label><select class="select" id="awardItem" style="width:100%" onchange="updateAwardPreview()">${lootItems.map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.item_type)}${x.grade?" / "+esc(x.grade):""}${x.enhancement===null?"":x.enhancement?" / +"+x.enhancement:" / 0"}</option>`).join("")}</select></div><div class="field full"><label>Получатель *</label><select class="select" id="awardPlayer" style="width:100%" onchange="updateAwardPreview()">${active.map(p=>`<option value="${p.id}">${esc(p.name)} — ${fmt(p.dkp)} DKP</option>`).join("")}</select></div><div class="field"><label>Стоимость DKP *</label><input class="input" id="awardCost" type="number" min="0" step="1" style="width:100%" oninput="updateAwardPreview()"></div><div class="field"><label>После выдачи</label><div class="card" id="awardPreview" style="padding:12px;min-height:42px"></div></div><div class="field full"><label>Комментарий</label><input class="input" id="awardComment" maxlength="200" style="width:100%" placeholder="Необязательно"></div><div class="field full"><div class="sub">Supabase повторно проверит баланс непосредственно перед выдачей. Если DKP недостаточно, ни лут, ни списание не будут записаны.</div></div></div><div style="margin-top:18px" class="actions"><button class="btn primary" id="awardBtn" type="submit">Выдать лут</button><button class="btn" type="button" onclick="closeModal()">Отмена</button></div></form>`);const item=lootItems.find(x=>x.id===Number(document.getElementById("awardItem").value));document.getElementById("awardCost").value=item?.default_cost??0;updateAwardPreview();
+}
+function updateAwardPreview(){
+ const p=players.find(x=>x.id===Number(document.getElementById("awardPlayer")?.value)), cost=Number(document.getElementById("awardCost")?.value||0), box=document.getElementById("awardPreview"),btn=document.getElementById("awardBtn");if(!p||!box)return;const left=p.dkp-cost,ok=Number.isInteger(cost)&&cost>=0&&left>=0;box.innerHTML=ok?`<b class="positive">${fmt(p.dkp)} → ${fmt(left)} DKP</b>`:`<b class="yellow">Недостаточно DKP</b><div class="sub">Баланс ${fmt(p.dkp)}, стоимость ${fmt(cost)}, не хватает ${fmt(Math.max(0,-left))}</div>`;if(btn)btn.disabled=!ok;
+}
+async function awardLoot(e){
+ e.preventDefault();if(!canManagePlayers())return toast("Недостаточно прав");const itemId=Number(document.getElementById("awardItem").value),playerId=Number(document.getElementById("awardPlayer").value),cost=Number(document.getElementById("awardCost").value),comment=document.getElementById("awardComment").value.trim()||null,p=players.find(x=>x.id===playerId);if(!Number.isInteger(cost)||cost<0)return toast("Проверьте стоимость");if(!p||p.dkp<cost)return toast("Недостаточно DKP");const btn=document.getElementById("awardBtn");btn.disabled=true;btn.textContent="Выдача...";const {error}=await db.rpc("award_loot",{p_item_id:itemId,p_player_id:playerId,p_cost:cost,p_comment:comment});if(error){btn.disabled=false;btn.textContent="Выдать лут";return toast("Ошибка: "+error.message)}closeModal();toast(`Лут выдан. Списано ${cost} DKP`);await loadData();go("loot");
+}
 
 async function loadData(){
- const [pr,tx,ev,ep,lt]=await Promise.all([
+ const [pr,tx,ev,ep,lt,li]=await Promise.all([
   db.from("players").select("id,nickname,character_name,race,class,status,created_at"),
-  db.from("dkp_transactions").select("id,player_id,amount,reason,created_at").order("created_at",{ascending:false}),
+  db.from("dkp_transactions").select("id,player_id,amount,reason,created_at,loot_id").order("created_at",{ascending:false}),
   db.from("events").select("id,name,description,event_date,default_dkp,status,created_at").order("event_date",{ascending:false}),
   db.from("event_participants").select("event_id,player_id,dkp_amount"),
-  db.from("loot").select("id,name,description,cost,status,winner_id,awarded_at,created_at").order("created_at",{ascending:false})
+  db.from("loot").select("id,name,description,cost,status,winner_id,awarded_at,created_at,item_id").order("created_at",{ascending:false}),
+  db.from("loot_items").select("id,name,category,item_type,grade,enhancement,race,item_level,default_cost,notes,created_at").order("name",{ascending:true})
  ]);
- const err=[pr,tx,ev,ep,lt].find(x=>x.error)?.error;if(err) throw err;
+ const err=[pr,tx,ev,ep,lt,li].find(x=>x.error)?.error;if(err) throw err;
  const txs=tx.data||[], parts=ep.data||[], rawPlayers=pr.data||[];
  const balances={};txs.forEach(t=>balances[t.player_id]=(balances[t.player_id]||0)+Number(t.amount||0));
  const lootWins={};(lt.data||[]).forEach(x=>{if(x.winner_id)lootWins[x.winner_id]=(lootWins[x.winner_id]||0)+1});
  players=rawPlayers.map(p=>({id:p.id,name:p.nickname||p.character_name||`#${p.id}`,character_name:p.character_name,race:p.race,playerClass:p.class,dkp:balances[p.id]||0,loot:lootWins[p.id]||0,status:p.status}));
  events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);const participants=ps.map(x=>({name:players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`,dkp:Number(x.dkp_amount||0),player_id:x.player_id}));return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:participants.map(x=>x.name),participants}});
- loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":"Ожидает"}));
+ lootItems=li.data||[];
+ loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":"Ожидает",item_id:x.item_id}));
  history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
  document.getElementById("activePlayers").textContent=players.filter(p=>p.status==="active").length;
  document.getElementById("totalPlayers").textContent=`из ${players.length} участников`;
