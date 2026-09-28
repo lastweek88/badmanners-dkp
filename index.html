@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BadManners DKP Manager v3</title>
+<title>BadManners DKP Manager v4</title>
 <style>
 :root{
   --bg:#000; --panel:#080808; --panel2:#0d0d0d; --panel3:#141414;
@@ -237,14 +237,14 @@ function renderDashboard(){
 }
 function renderRank(id,n){
  const arr=[...players].sort((a,b)=>b.dkp-a.dkp).slice(0,n);
- document.getElementById(id).innerHTML=arr.map((p,i)=>`<div class="rank-item"><div class="rank-no">${i+1}</div><div class="player-avatar">${initials(p.name)}</div><div class="rank-name">${p.name}<div class="rank-class">${p.class} • ${p.att}% посещаемости</div></div><div class="rank-dkp">${fmt(p.dkp)}</div></div>`).join("");
+ document.getElementById(id).innerHTML=arr.length?arr.map((p,i)=>`<div class="rank-item"><div class="rank-no">${i+1}</div><div class="player-avatar">${initials(p.name)}</div><div class="rank-name">${esc(p.name)}<div class="rank-class">${esc(p.race||"—")} • ${esc(p.playerClass||"—")}</div></div><div class="rank-dkp">${fmt(p.dkp)}</div></div>`).join(""):'<div class="empty">Игроков пока нет.</div>';
 }
 function renderPlayers(){
  const q=(document.getElementById("playerSearch").value||"").toLowerCase();
  const race=(document.getElementById("raceFilter")?.value||"");
  const arr=players.filter(p=>p.name.toLowerCase().includes(q)&&(!race||p.race===race)).sort((a,b)=>b.dkp-a.dkp);
  const canStaff=["admin","officer"].includes(currentProfile?.role), isAdmin=currentProfile?.role==="admin";
- document.getElementById("playersTable").innerHTML=arr.length?arr.map((p,i)=>`<tr><td>${i+1}</td><td><div class="event-name">${esc(p.name)}</div><div class="sub">ID #${String(p.id).padStart(3,"0")}${p.character_name?` • ${esc(p.character_name)}`:""}</div></td><td>${esc(p.race||"—")}</td><td>${esc(p.playerClass||"—")}</td><td class="cyan"><b>${fmt(p.dkp)}</b></td><td><span class="badge ${p.status==="active"?"accepted":"cancelled"}">${p.status==="active"?"Активен":"Неактивен"}</span></td><td>${p.loot}</td><td><div class="actions"><button class="btn" onclick="playerDetails(${p.id})">Профиль</button>${canStaff?`<button class="btn" onclick="editPlayer(${p.id})">Изменить</button>`:""}${isAdmin?`<button class="btn danger" onclick="deletePlayer(${p.id})">Удалить</button>`:""}</div></td></tr>`).join(""):`<tr><td colspan="8" class="empty">Игроков пока нет. ${canStaff?'Нажмите «Добавить игрока».':''}</td></tr>`;
+ document.getElementById("playersTable").innerHTML=arr.length?arr.map((p,i)=>`<tr><td>${i+1}</td><td><div class="event-name">${esc(p.name)}</div><div class="sub">ID #${String(p.id).padStart(3,"0")}${p.character_name?` • ${esc(p.character_name)}`:""}</div></td><td>${esc(p.race||"—")}</td><td>${esc(p.playerClass||"—")}</td><td class="cyan"><b>${fmt(p.dkp)}</b></td><td><span class="badge ${p.status==="active"?"accepted":"cancelled"}">${p.status==="active"?"Активен":"Неактивен"}</span></td><td>${p.loot}</td><td><div class="actions"><button class="btn" onclick="playerDetails(${p.id})">Профиль</button>${canStaff?`<button class="btn primary" onclick="openDkpModal(${p.id})">± DKP</button><button class="btn" onclick="editPlayer(${p.id})">Изменить</button>`:""}${isAdmin?`<button class="btn danger" onclick="deletePlayer(${p.id})">Удалить</button>`:""}</div></td></tr>`).join(""):`<tr><td colspan="8" class="empty">Игроков пока нет. ${canStaff?'Нажмите «Добавить игрока».':''}</td></tr>`;
 }
 
 function renderLoot(){
@@ -252,7 +252,7 @@ function renderLoot(){
  document.getElementById("lootTable").innerHTML=loot.filter(x=>x.item.toLowerCase().includes(q)).map(x=>`<tr><td><div class="item">${x.item}</div><div class="rarity">${x.rarity}</div></td><td>${x.source}</td><td>${x.date}</td><td>${x.winner}</td><td class="price">${fmt(x.price)}</td><td><span class="badge ${x.status==="Выдан"?"accepted":"pending"}">${x.status}</span></td><td><button class="btn" onclick="lootDetails(${x.id})">Подробнее</button></td></tr>`).join("");
 }
 function renderHistory(){
- document.getElementById("historyTable").innerHTML=history.map(r=>`<tr><td>${r[0]}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td class="${r[3].startsWith("+")?"positive":"yellow"}"><b>${r[3]}</b></td></tr>`).join("");
+ document.getElementById("historyTable").innerHTML=history.length?history.map(r=>`<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b></td><td>${esc(r[2])}</td><td class="${r[3].startsWith("+")?"positive":"yellow"}"><b>${esc(r[3])}</b></td></tr>`).join(""):'<tr><td colspan="4" class="empty">Операций DKP пока нет.</td></tr>';
 }
 function eventDetails(id){
  const e=events.find(x=>x.id===id);
@@ -261,6 +261,34 @@ function eventDetails(id){
 function playerDetails(id){
  const p=players.find(x=>x.id===id); if(!p)return;
  showModal(esc(p.name),`${esc(p.race||"—")} / ${esc(p.playerClass||"—")} • ${p.status==="active"?"активен":"неактивен"}`,`<div class="grid stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:18px"><div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(p.dkp)}</div></div><div class="card stat"><div class="label">Получено лута</div><div class="value">${p.loot}</div></div></div><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ</b>${history.filter(x=>x[1]===p.name).slice(0,5).map(x=>`<div class="participant"><span>${esc(x[2])}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")||'<div class="empty">Операций DKP пока нет.</div>'}`);
+}
+
+function openDkpModal(id){
+ if(!canManagePlayers())return toast("Недостаточно прав");
+ const p=players.find(x=>x.id===id);if(!p)return;
+ showModal("Изменить DKP",`${p.name} • текущий баланс: ${fmt(p.dkp)} DKP`,`
+ <form class="form-grid" onsubmit="saveDkpTransaction(event,${p.id})">
+   <div class="field"><label>Операция</label><select class="select" id="dkpMode" style="width:100%"><option value="add">Начислить (+)</option><option value="subtract">Списать (-)</option></select></div>
+   <div class="field"><label>Количество DKP *</label><input class="input" id="dkpAmount" type="number" min="1" step="1" required style="width:100%" placeholder="Например: 50"></div>
+   <div class="field full"><label>Причина *</label><input class="input" id="dkpReason" maxlength="150" required style="width:100%" placeholder="Например: участие в рейде / штраф / ручная корректировка"></div>
+   <div class="field full"><div class="sub">Операция будет навсегда записана в истории DKP с датой и автором. Баланс игрока рассчитывается из всех операций.</div></div>
+   <div class="field full"><div class="actions"><button class="btn primary" id="dkpSaveBtn" type="submit">Сохранить операцию</button><button class="btn" type="button" onclick="closeModal()">Отмена</button></div></div>
+ </form>`);
+}
+async function saveDkpTransaction(e,playerId){
+ e.preventDefault();
+ if(!["admin","officer"].includes(currentProfile?.role))return toast("Недостаточно прав");
+ const p=players.find(x=>x.id===playerId);if(!p)return toast("Игрок не найден");
+ const raw=Number(document.getElementById("dkpAmount").value);
+ const reason=document.getElementById("dkpReason").value.trim();
+ const mode=document.getElementById("dkpMode").value;
+ if(!Number.isInteger(raw)||raw<=0)return toast("DKP должно быть целым числом больше 0");
+ if(!reason)return toast("Укажите причину операции");
+ const amount=mode==="subtract"?-raw:raw;
+ const btn=document.getElementById("dkpSaveBtn");btn.disabled=true;btn.textContent="Сохранение...";
+ const {error}=await db.from("dkp_transactions").insert({player_id:playerId,amount,reason,created_by:currentUser.id});
+ if(error){btn.disabled=false;btn.textContent="Сохранить операцию";return toast("Ошибка: "+error.message)}
+ closeModal();toast(`${p.name}: ${amount>0?"+":""}${amount} DKP`);await loadData();
 }
 
 function lootDetails(id){
