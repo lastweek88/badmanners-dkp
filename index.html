@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BadManners DKP Manager v3</title>
+<style>
+:root{
+  --bg:#000; --panel:#080808; --panel2:#0d0d0d; --panel3:#141414;
+  --line:#242424; --line2:#444; --text:#ededed; --muted:#777;
+  --cyan:#f0f0f0; --green:#72d69a; --yellow:#d7ae54; --red:#d56b72;
+  --shadow:0 14px 36px rgba(0,0,0,.48);
+}
+*{box-sizing:border-box}
+body{margin:0;background:
+ radial-gradient(circle at 20% 0%,rgba(255,255,255,.035),transparent 32%),
+ radial-gradient(circle at 100% 70%,rgba(255,255,255,.025),transparent 35%),
+ var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;border-right:1px solid var(--line);background:rgba(5,9,16,.9);padding:22px 14px;position:fixed;inset:0 auto 0 0;z-index:5}
+.brand{padding:8px 12px 24px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.brand b{display:block;font-size:20px;letter-spacing:.08em}
+.brand span{color:var(--cyan);font-size:11px;letter-spacing:.16em}
+.nav button{width:100%;background:transparent;border:1px solid transparent;color:#9fb3c1;text-align:left;padding:12px 14px;border-radius:5px;margin:3px 0;transition:.18s}
+.nav button:hover{background:#151515;color:#fff}
+.nav button.active{background:linear-gradient(90deg,#181818,#0c0c0c);border-color:var(--line2);color:#fff;box-shadow:inset 3px 0 0 #ffffff}
+.nav small{display:block;color:#587081;padding:18px 14px 7px;font-size:10px;letter-spacing:.13em;text-transform:uppercase}
+.userbox{position:absolute;left:14px;right:14px;bottom:16px;border:1px solid var(--line);background:#0b131f;padding:12px;border-radius:5px}
+.avatar{width:34px;height:34px;border:1px solid #37627b;border-radius:50%;display:grid;place-items:center;color:var(--cyan);font-weight:700}
+.userrow{display:flex;align-items:center;gap:10px}
+.userbox .name{font-weight:700;font-size:13px}.userbox .role{color:var(--muted);font-size:11px;margin-top:2px}
+.main{margin-left:240px;width:calc(100% - 240px)}
+.topbar{height:66px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:rgba(6,11,18,.72);backdrop-filter:blur(8px);position:sticky;top:0;z-index:4}
+.top-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.bm-logo{font-size:15px;font-weight:900;letter-spacing:.08em;color:#fff;text-transform:none;white-space:nowrap}
+.bm-mark{width:27px;height:27px;display:grid;place-items:center;border:1px solid #707070;background:#0b0b0b;color:#fff;font-size:9px;font-weight:900;letter-spacing:.02em}
+.bm-sep{color:#444;font-size:13px}.bm-clan{font-size:8px;color:#666;letter-spacing:.16em;border:1px solid #333;padding:3px 5px}
+.top-title{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.server{display:flex;align-items:center;gap:8px;font-size:12px;color:#a7bac6}.dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 10px rgba(82,214,138,.35)}
+.content{padding:30px;max-width:1450px;margin:auto}
+.page{display:none}.page.active{display:block}
+h1{font-size:25px;margin:0 0 6px}.subtitle{color:var(--muted);font-size:12px;margin-bottom:24px}.page-kicker{font-size:9px;color:#555;letter-spacing:.2em;margin-bottom:7px}
+.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:linear-gradient(145deg,rgba(17,29,43,.94),rgba(9,17,27,.94));border:1px solid var(--line);box-shadow:var(--shadow);border-radius:5px}
+.stat{padding:19px}.stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.stat .value{font-size:28px;font-weight:800;margin-top:8px}.positive{color:var(--green)}.cyan{color:var(--cyan)}.yellow{color:var(--yellow)}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:26px 0 12px}.section-head h2{font-size:15px;margin:0}.linkbtn{background:transparent;border:0;color:var(--cyan);font-size:12px}
+.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:13px}.table th{color:#83a1b2;font-size:10px;text-transform:uppercase;letter-spacing:.1em;text-align:left;padding:13px 14px;background:#09121d;border-bottom:1px solid var(--line)}.table td{padding:14px;border-bottom:1px solid #1b3444;vertical-align:middle}.table tr:hover td{background:rgba(29,63,83,.16)}
+.event-name{font-weight:700}.event-type{font-size:11px;color:#7393a5;margin-top:4px}.sub{color:var(--muted);font-size:11px;margin-top:3px}
+.badge{display:inline-block;padding:5px 9px;border-radius:2px;font-size:11px;font-weight:700}.accepted{color:#7ef0ad;background:#123b29;border:1px solid #226d49}.pending{color:#ffd36a;background:#493613;border:1px solid #76571a}.cancelled{color:#ff9aa2;background:#421d23;border:1px solid #6d3038}
+.btn{border:1px solid #464646;background:#111;color:#ededed;padding:9px 13px;border-radius:3px;font-size:12px}.btn:hover{border-color:#bdbdbd;color:#fff}.btn.primary{background:#242424;border-color:#5a5a5a}.btn.danger{border-color:#71313a;color:#ffabb0}
+.actions{display:flex;gap:8px;align-items:center}
+.two{grid-template-columns:1.35fr .65fr}
+.rank{padding:0}.rank-item{display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #1b3444}.rank-item:last-child{border-bottom:0}.rank-no{width:24px;color:#698798;font-weight:700}.player-avatar{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;background:#171717;border:1px solid #454545;color:#f2f2f2;font-size:11px;font-weight:800}.rank-name{flex:1;font-weight:700}.rank-class{font-size:10px;color:var(--muted);margin-top:3px}.rank-dkp{font-weight:800}
+.filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}.input,.select{background:#09131f;border:1px solid var(--line);color:#dceaf1;padding:10px 11px;border-radius:3px;outline:none}.input:focus,.select:focus{border-color:var(--cyan)}
+.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+.item{font-weight:700}.rarity{font-size:10px;color:#8eb2c4;text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+.price{font-weight:800;color:var(--yellow)}.empty{padding:35px;text-align:center;color:var(--muted)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.68);display:none;place-items:center;z-index:20;padding:20px}.modal-bg.show{display:grid}
+.modal{width:min(720px,100%);background:#0b1420;border:1px solid var(--line2);box-shadow:0 30px 90px #000;padding:22px;border-radius:5px}.modal-head{display:flex;justify-content:space-between;gap:20px;align-items:start}.modal h2{margin:0;font-size:20px}.close{background:transparent;border:0;color:#7f9cac;font-size:24px}.close:hover{color:#fff}.modal-body{margin-top:18px}.participant{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a3242}.participant:last-child{border-bottom:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;color:#7e99a8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.field.full{grid-column:1/-1}
+.toast{position:fixed;right:22px;bottom:22px;background:#181818;border:1px solid #555;padding:12px 16px;border-radius:4px;box-shadow:var(--shadow);display:none;z-index:30;font-size:13px}.toast.show{display:block}
+@media(max-width:900px){.sidebar{width:190px}.main{margin-left:190px;width:calc(100% - 190px)}.stats{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
+@media(max-width:650px){.sidebar{position:static;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line)}.app{display:block}.main{margin-left:0;width:100%}.userbox{position:static;margin-top:15px}.topbar{position:static}.stats{grid-template-columns:1fr}.content{padding:18px}.form-grid{grid-template-columns:1fr}}
+
+/* BadManners Strict Edition */
+body{font-family:Inter,Segoe UI,Arial,sans-serif;letter-spacing:.005em}
+.sidebar{width:218px;padding:18px 10px;background:#000;border-right:1px solid #202020}
+.main{margin-left:218px;width:calc(100% - 218px)}
+.brand{padding:7px 12px 20px;margin-bottom:14px}
+.brand b{font-size:18px;letter-spacing:.12em;text-transform:uppercase}
+.brand span{font-size:9px;letter-spacing:.18em;color:#666}
+.nav button{padding:10px 12px;border-radius:2px;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.nav button.active{background:#151515;border-color:#3d3d3d;box-shadow:inset 2px 0 0 #fff}
+.topbar{height:58px;padding:0 25px;background:#050505;border-bottom:1px solid #222}
+.bm-logo{font-size:14px;letter-spacing:.16em;text-transform:uppercase}
+.bm-mark{border-radius:2px;width:25px;height:25px;background:#fff;color:#000;border-color:#fff}
+.bm-sep{color:#444}
+.content{padding:26px;max-width:1380px}
+h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
+.subtitle{font-size:11px;letter-spacing:.02em}
+.card{border-radius:2px;box-shadow:0 10px 28px rgba(0,0,0,.4)}
+.stat{padding:16px}
+.stat .value{font-size:25px}
+.table{font-size:12px}
+.table th{font-size:9px;padding:11px 13px;letter-spacing:.15em}
+.table td{padding:12px 13px}
+.btn{border-radius:2px;text-transform:uppercase;font-size:10px;letter-spacing:.08em;padding:8px 11px}
+.input,.select{border-radius:2px;font-size:12px;padding:9px 10px;background:#070707}
+.badge{border-radius:1px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:4px 7px}
+.section-head{margin:22px 0 10px}
+.section-head h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+.event-name,.item{font-weight:650}
+.sub,.event-type{font-size:10px;color:#666}
+.rank-item{padding:11px 13px}
+.player-avatar{border-radius:2px;background:#111;border-color:#3a3a3a}
+.userbox{border-radius:2px;background:#080808;border-color:#292929}
+.avatar{border-radius:2px}
+.modal{border-radius:2px;background:#080808;border-color:#444}
+
+
+.auth-screen{position:fixed;inset:0;background:#000;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px}.auth-screen.hidden{display:none}.auth-box{width:min(420px,100%);border:1px solid #333;background:#080808;padding:28px}.auth-logo{font-size:24px;font-weight:800;letter-spacing:-.03em}.auth-logo span{font-size:10px;color:#777;letter-spacing:.18em;margin-left:8px}.auth-desc{color:#777;font-size:12px;margin:8px 0 22px}.auth-box label{display:block;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.1em;margin:12px 0 6px}.auth-box input{width:100%;box-sizing:border-box}.auth-box .btn{width:100%;margin-top:18px}.auth-error{min-height:18px;color:#e06b73;font-size:11px;margin-top:10px}.logout-btn{margin-top:10px;width:100%;font-size:10px}.loading-note{color:#777;font-size:11px;padding:18px}
+</style>
+</head>
+<body>
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">BadManners <span>CLAN CONTROL</span></div>
+    <div class="auth-desc">Вход в систему управления DKP</div>
+    <form id="loginForm">
+      <label>Email</label><input class="input" id="loginEmail" type="email" autocomplete="email" required>
+      <label>Пароль</label><input class="input" id="loginPassword" type="password" autocomplete="current-password" required>
+      <button class="btn primary" id="loginBtn" type="submit">Войти</button>
+      <div class="auth-error" id="authError"></div>
+    </form>
+  </div>
+</div>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><b>BadManners</b><span>DKP MANAGER • CLAN SYSTEM</span></div>
+    <nav class="nav">
+      <small>Основное</small>
+      <button class="active" data-page="dashboard">◈ &nbsp; Главная</button>
+      <button data-page="events">◷ &nbsp; События</button>
+      <button data-page="players">♙ &nbsp; Игроки</button>
+      <button data-page="loot">◆ &nbsp; Лут</button>
+      <small>Аналитика</small>
+      <button data-page="history">↻ &nbsp; История DKP</button>
+      <button data-page="ranking">♛ &nbsp; Рейтинг</button>
+    </nav>
+    <div class="userbox">
+      <div class="userrow"><div class="avatar" id="userAvatar">--</div><div><div class="name" id="userName">—</div><div class="role" id="userRole">—</div></div></div>
+      <button class="btn logout-btn" onclick="logout()">Выйти</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar"><div class="top-brand"><span class="bm-mark">BM</span><span class="bm-logo">BadManners</span><span class="bm-clan">CLAN</span><span class="bm-sep">/</span><div class="top-title" id="topTitle">Главная</div></div><div class="server"><span class="dot"></span> <span id="serverStatus">Supabase подключён</span></div></header>
+    <div class="content">
+
+      <section class="page active" id="dashboard">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Главная</h1><div class="subtitle">Сводка клана и последние изменения DKP.</div>
+        <div class="grid stats">
+          <div class="card stat"><div class="label">Мой DKP</div><div class="value cyan" id="myDkp">0</div><div class="sub" id="myRank">—</div></div>
+          <div class="card stat"><div class="label">Посещаемость</div><div class="value positive" id="attendanceValue">—</div><div class="sub">будет рассчитана по событиям</div></div>
+          <div class="card stat"><div class="label">Активные игроки</div><div class="value" id="activePlayers">0</div><div class="sub" id="totalPlayers">из 0 участников</div></div>
+          <div class="card stat"><div class="label">Лут всего</div><div class="value yellow" id="lootCount">0</div><div class="sub">выданных предметов</div></div>
+        </div>
+        <div class="grid two">
+          <div>
+            <div class="section-head"><h2>Последние события</h2><button class="linkbtn" onclick="go('events')">Все события →</button></div>
+            <div class="card table-wrap"><table class="table"><thead><tr><th>Событие</th><th>Дата</th><th>Участники</th><th>DKP</th></tr></thead><tbody id="dashEvents"></tbody></table></div>
+          </div>
+          <div>
+            <div class="section-head"><h2>Топ игроков</h2><button class="linkbtn" onclick="go('ranking')">Полный рейтинг →</button></div>
+            <div class="card rank" id="dashRank"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="events">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>События</h1><div class="subtitle">Рейды, пит-боссы, ChipWar и другие активности клана.</div>
+        <div class="toolbar"><div class="filters"><input class="input" id="eventSearch" placeholder="Поиск события..." oninput="renderEvents()"><select class="select" id="eventStatus" onchange="renderEvents()"><option value="">Все статусы</option><option>Принято</option><option>Ожидает решения</option></select></div><button class="btn primary" onclick="newEvent()">+ Создать событие</button></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Событие</th><th>Дата и окно</th><th>Статус</th><th>Участники</th><th>DKP</th><th></th></tr></thead><tbody id="eventsTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="players">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Игроки</h1><div class="subtitle">Участники клана, DKP и посещаемость.</div>
+        <div class="toolbar"><div class="filters"><input class="input" id="playerSearch" placeholder="Поиск игрока..." oninput="renderPlayers()"><select class="select" id="raceFilter" onchange="renderPlayers()"><option value="">Все расы</option><option value="Accretia">Accretia</option><option value="Bellato">Bellato</option><option value="Cora">Cora</option></select></div><button class="btn primary staff-only" id="addPlayerBtn" onclick="newPlayer()">+ Добавить игрока</button></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>#</th><th>Игрок</th><th>Раса</th><th>Класс</th><th>DKP</th><th>Статус</th><th>Лут</th><th></th></tr></thead><tbody id="playersTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="loot">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Лут</h1><div class="subtitle">История распределения предметов и их стоимость в DKP.</div>
+        <div class="toolbar"><div class="filters"><input class="input" id="lootSearch" placeholder="Поиск предмета..." oninput="renderLoot()"><select class="select"><option>Все предметы</option><option>Выдан</option><option>Ожидает распределения</option></select></div><button class="btn primary" onclick="newLoot()">+ Добавить лут</button></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Источник</th><th>Дата</th><th>Победитель</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="history">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>История DKP</h1><div class="subtitle">Каждое начисление и списание сохраняется отдельной операцией.</div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Дата</th><th>Игрок</th><th>Причина</th><th>Изменение</th></tr></thead><tbody id="historyTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="ranking">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Рейтинг</h1><div class="subtitle">Текущий баланс DKP участников клана.</div>
+        <div class="card rank" id="fullRank"></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-head"><div><h2 id="modalTitle">Подробнее</h2><div class="sub" id="modalSub"></div></div><button class="close" onclick="closeModal()">×</button></div><div class="modal-body" id="modalBody"></div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://ikghimwmqgqjsaeoxbnj.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_a_eu-V76-XmhI9UVBIvuww_2JcCfu2H";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let currentUser=null,currentProfile=null;
+let players=[];
+let events=[];
+let loot=[];
+let history=[];
+
+function initials(name){return name.slice(0,2).toUpperCase()}
+function fmt(n){return Number(n).toLocaleString("ru-RU",{minimumFractionDigits:n%1?1:0,maximumFractionDigits:1})}
+function go(page){
+ document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+ document.getElementById(page).classList.add("active");
+ document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
+ const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",history:"История DKP",ranking:"Рейтинг"};
+ document.getElementById("topTitle").textContent=titles[page];
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
+
+function eventRow(e){
+ return `<tr><td><div class="event-name">${e.name}</div><div class="event-type">${e.type}</div></td>
+ <td>${e.start}<div class="sub">${e.end}</div></td>
+ <td><span class="badge ${e.status==="Принято"?"accepted":"pending"}">${e.status}</span></td>
+ <td>${e.count}</td><td class="cyan"><b>${fmt(e.dkp)}</b></td>
+ <td><button class="btn" onclick="eventDetails(${e.id})">Подробнее</button></td></tr>`;
+}
+function renderEvents(){
+ const q=(document.getElementById("eventSearch").value||"").toLowerCase(), s=document.getElementById("eventStatus").value;
+ document.getElementById("eventsTable").innerHTML=events.filter(e=>(!q||e.name.toLowerCase().includes(q))&&(!s||e.status===s)).map(eventRow).join("");
+}
+function renderDashboard(){
+ document.getElementById("dashEvents").innerHTML=events.slice(0,4).map(e=>`<tr><td><div class="event-name">${e.name}</div><div class="event-type">${e.type}</div></td><td>${e.start}</td><td>${e.count}</td><td class="cyan"><b>${fmt(e.dkp)}</b></td></tr>`).join("");
+ renderRank("dashRank",5); renderRank("fullRank",players.length);
+}
+function renderRank(id,n){
+ const arr=[...players].sort((a,b)=>b.dkp-a.dkp).slice(0,n);
+ document.getElementById(id).innerHTML=arr.map((p,i)=>`<div class="rank-item"><div class="rank-no">${i+1}</div><div class="player-avatar">${initials(p.name)}</div><div class="rank-name">${p.name}<div class="rank-class">${p.class} • ${p.att}% посещаемости</div></div><div class="rank-dkp">${fmt(p.dkp)}</div></div>`).join("");
+}
+function renderPlayers(){
+ const q=(document.getElementById("playerSearch").value||"").toLowerCase();
+ const race=(document.getElementById("raceFilter")?.value||"");
+ const arr=players.filter(p=>p.name.toLowerCase().includes(q)&&(!race||p.race===race)).sort((a,b)=>b.dkp-a.dkp);
+ const canStaff=["admin","officer"].includes(currentProfile?.role), isAdmin=currentProfile?.role==="admin";
+ document.getElementById("playersTable").innerHTML=arr.length?arr.map((p,i)=>`<tr><td>${i+1}</td><td><div class="event-name">${esc(p.name)}</div><div class="sub">ID #${String(p.id).padStart(3,"0")}${p.character_name?` • ${esc(p.character_name)}`:""}</div></td><td>${esc(p.race||"—")}</td><td>${esc(p.playerClass||"—")}</td><td class="cyan"><b>${fmt(p.dkp)}</b></td><td><span class="badge ${p.status==="active"?"accepted":"cancelled"}">${p.status==="active"?"Активен":"Неактивен"}</span></td><td>${p.loot}</td><td><div class="actions"><button class="btn" onclick="playerDetails(${p.id})">Профиль</button>${canStaff?`<button class="btn" onclick="editPlayer(${p.id})">Изменить</button>`:""}${isAdmin?`<button class="btn danger" onclick="deletePlayer(${p.id})">Удалить</button>`:""}</div></td></tr>`).join(""):`<tr><td colspan="8" class="empty">Игроков пока нет. ${canStaff?'Нажмите «Добавить игрока».':''}</td></tr>`;
+}
+
+function renderLoot(){
+ const q=(document.getElementById("lootSearch").value||"").toLowerCase();
+ document.getElementById("lootTable").innerHTML=loot.filter(x=>x.item.toLowerCase().includes(q)).map(x=>`<tr><td><div class="item">${x.item}</div><div class="rarity">${x.rarity}</div></td><td>${x.source}</td><td>${x.date}</td><td>${x.winner}</td><td class="price">${fmt(x.price)}</td><td><span class="badge ${x.status==="Выдан"?"accepted":"pending"}">${x.status}</span></td><td><button class="btn" onclick="lootDetails(${x.id})">Подробнее</button></td></tr>`).join("");
+}
+function renderHistory(){
+ document.getElementById("historyTable").innerHTML=history.map(r=>`<tr><td>${r[0]}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td class="${r[3].startsWith("+")?"positive":"yellow"}"><b>${r[3]}</b></td></tr>`).join("");
+}
+function eventDetails(id){
+ const e=events.find(x=>x.id===id);
+ showModal(e.name,`${e.start} — ${e.end} • ${e.status}`,`<div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px"><div class="card stat"><div class="label">Участники</div><div class="value">${e.count}</div></div><div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(e.dkp)}</div></div><div class="card stat"><div class="label">Статус</div><div class="value" style="font-size:17px">${e.status}</div></div></div><b style="font-size:12px;color:#8ba6b5">УЧАСТНИКИ</b>${e.people.map(p=>`<div class="participant"><span>${p}</span><span class="cyan">+${fmt(e.dkp)}</span></div>`).join("")}<div style="margin-top:18px;display:flex;gap:8px"><button class="btn primary" onclick="toast('Событие подтверждено');closeModal()">Подтвердить событие</button><button class="btn" onclick="closeModal()">Закрыть</button></div>`);
+}
+function playerDetails(id){
+ const p=players.find(x=>x.id===id); if(!p)return;
+ showModal(esc(p.name),`${esc(p.race||"—")} / ${esc(p.playerClass||"—")} • ${p.status==="active"?"активен":"неактивен"}`,`<div class="grid stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:18px"><div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(p.dkp)}</div></div><div class="card stat"><div class="label">Получено лута</div><div class="value">${p.loot}</div></div></div><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ</b>${history.filter(x=>x[1]===p.name).slice(0,5).map(x=>`<div class="participant"><span>${esc(x[2])}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")||'<div class="empty">Операций DKP пока нет.</div>'}`);
+}
+
+function lootDetails(id){
+ const x=loot.find(a=>a.id===id);
+ showModal(x.item,`${x.rarity} • ${x.source}`,`<div class="participant"><span>Победитель</span><b>${x.winner}</b></div><div class="participant"><span>Стоимость</span><b class="yellow">${fmt(x.price)} DKP</b></div><div class="participant"><span>Дата</span><span>${x.date}</span></div><div class="participant"><span>Статус</span><span class="badge ${x.status==="Выдан"?"accepted":"pending"}">${x.status}</span></div>`);
+}
+function showModal(title,sub,body){document.getElementById("modalTitle").textContent=title;document.getElementById("modalSub").textContent=sub;document.getElementById("modalBody").innerHTML=body;document.getElementById("modalBg").classList.add("show")}
+function closeModal(){document.getElementById("modalBg").classList.remove("show")}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2400)}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function canManagePlayers(){return ["admin","officer"].includes(currentProfile?.role)}
+function newPlayer(){
+ if(!canManagePlayers())return toast("Недостаточно прав");
+ showModal("Добавить игрока","Новый участник будет сохранён в Supabase",`<form id="playerForm" class="form-grid" onsubmit="savePlayer(event)"><div class="field"><label>Ник *</label><input class="input" id="pfNickname" style="width:100%" required maxlength="50" placeholder="Например: Raptor"></div><div class="field"><label>Имя персонажа</label><input class="input" id="pfCharacter" style="width:100%" maxlength="50" placeholder="Можно оставить пустым"></div><div class="field"><label>Раса</label><select class="select" id="pfRace" style="width:100%"><option value="">—</option><option>Accretia</option><option>Bellato</option><option>Cora</option></select></div><div class="field"><label>Класс</label><input class="input" id="pfClass" style="width:100%" maxlength="50" placeholder="Например: Launcher"></div><div class="field"><label>Статус</label><select class="select" id="pfStatus" style="width:100%"><option value="active">Активен</option><option value="inactive">Неактивен</option></select></div><div class="field full"><div class="sub">Начальный DKP = 0. Начисления и списания будут храниться отдельными операциями.</div></div><div class="field full"><div class="actions"><button class="btn primary" id="playerSaveBtn" type="submit">Добавить</button><button class="btn" type="button" onclick="closeModal()">Отмена</button></div></div></form>`);
+}
+async function savePlayer(e,id=null){
+ e.preventDefault(); if(!canManagePlayers())return toast("Недостаточно прав");
+ const payload={nickname:document.getElementById("pfNickname").value.trim(),character_name:document.getElementById("pfCharacter").value.trim()||null,race:document.getElementById("pfRace").value||null,class:document.getElementById("pfClass").value.trim()||null,status:document.getElementById("pfStatus").value};
+ if(!payload.nickname)return toast("Укажите ник");
+ const btn=document.getElementById("playerSaveBtn");btn.disabled=true;btn.textContent="Сохранение...";
+ const result=id?await db.from("players").update(payload).eq("id",id):await db.from("players").insert(payload);
+ if(result.error){btn.disabled=false;btn.textContent="Сохранить";toast("Ошибка: "+result.error.message);return}
+ closeModal();toast(id?"Игрок обновлён":"Игрок добавлен");await loadData();
+}
+function editPlayer(id){
+ if(!canManagePlayers())return toast("Недостаточно прав"); const p=players.find(x=>x.id===id);if(!p)return;
+ showModal("Изменить игрока",`ID #${String(p.id).padStart(3,"0")}`,`<form id="playerForm" class="form-grid" onsubmit="savePlayer(event,${p.id})"><div class="field"><label>Ник *</label><input class="input" id="pfNickname" style="width:100%" required maxlength="50" value="${esc(p.name)}"></div><div class="field"><label>Имя персонажа</label><input class="input" id="pfCharacter" style="width:100%" maxlength="50" value="${esc(p.character_name||"")}"></div><div class="field"><label>Раса</label><select class="select" id="pfRace" style="width:100%"><option value="">—</option><option ${p.race==="Accretia"?"selected":""}>Accretia</option><option ${p.race==="Bellato"?"selected":""}>Bellato</option><option ${p.race==="Cora"?"selected":""}>Cora</option></select></div><div class="field"><label>Класс</label><input class="input" id="pfClass" style="width:100%" maxlength="50" value="${esc(p.playerClass||"")}"></div><div class="field"><label>Статус</label><select class="select" id="pfStatus" style="width:100%"><option value="active" ${p.status==="active"?"selected":""}>Активен</option><option value="inactive" ${p.status==="inactive"?"selected":""}>Неактивен</option></select></div><div class="field full"><div class="actions"><button class="btn primary" id="playerSaveBtn" type="submit">Сохранить</button><button class="btn" type="button" onclick="closeModal()">Отмена</button></div></div></form>`);
+}
+async function deletePlayer(id){
+ if(currentProfile?.role!=="admin")return toast("Удалять игроков может только Admin"); const p=players.find(x=>x.id===id);if(!p)return;
+ if(!confirm(`Удалить игрока ${p.name}? Связанные DKP-операции будут удалены. Это действие нельзя отменить.`))return;
+ const {error}=await db.from("players").delete().eq("id",id);if(error)return toast("Ошибка: "+error.message);toast("Игрок удалён");await loadData();
+}
+function newEvent(){showModal("Создать событие","Демо-форма — база данных будет подключена на следующем этапе",`<div class="form-grid"><div class="field full"><label>Название</label><input class="input" style="width:100%" value="Заставные Пит-Боссы"></div><div class="field"><label>Начало</label><input class="input" style="width:100%" type="datetime-local" value="2026-08-12T01:00"></div><div class="field"><label>Окончание</label><input class="input" style="width:100%" type="time" value="01:45"></div><div class="field"><label>DKP</label><input class="input" style="width:100%" value="14"></div><div class="field"><label>Статус</label><select class="select" style="width:100%"><option>Ожидает решения</option><option>Принято</option></select></div></div><div style="margin-top:18px;display:flex;gap:8px"><button class="btn primary" onclick="toast('Событие создано в режиме прототипа');closeModal()">Создать</button><button class="btn" onclick="closeModal()">Отмена</button></div>`)}
+function newLoot(){showModal("Добавить лут","Демо-форма",`<div class="form-grid"><div class="field full"><label>Предмет</label><input class="input" style="width:100%" placeholder="Название предмета"></div><div class="field"><label>Источник</label><input class="input" style="width:100%" value="Элан Пит-Босс"></div><div class="field"><label>Стоимость DKP</label><input class="input" style="width:100%" value="100"></div></div><div style="margin-top:18px"><button class="btn primary" onclick="toast('Предмет добавлен в режиме прототипа');closeModal()">Добавить</button></div>`)}
+
+async function loadData(){
+ const [pr,tx,ev,ep,lt]=await Promise.all([
+  db.from("players").select("id,nickname,character_name,race,class,status,created_at"),
+  db.from("dkp_transactions").select("id,player_id,amount,reason,created_at").order("created_at",{ascending:false}),
+  db.from("events").select("id,name,description,event_date,default_dkp,status,created_at").order("event_date",{ascending:false}),
+  db.from("event_participants").select("event_id,player_id,dkp_amount"),
+  db.from("loot").select("id,name,description,cost,status,winner_id,awarded_at,created_at").order("created_at",{ascending:false})
+ ]);
+ const err=[pr,tx,ev,ep,lt].find(x=>x.error)?.error;if(err) throw err;
+ const txs=tx.data||[], parts=ep.data||[], rawPlayers=pr.data||[];
+ const balances={};txs.forEach(t=>balances[t.player_id]=(balances[t.player_id]||0)+Number(t.amount||0));
+ const lootWins={};(lt.data||[]).forEach(x=>{if(x.winner_id)lootWins[x.winner_id]=(lootWins[x.winner_id]||0)+1});
+ players=rawPlayers.map(p=>({id:p.id,name:p.nickname||p.character_name||`#${p.id}`,character_name:p.character_name,race:p.race,playerClass:p.class,dkp:balances[p.id]||0,loot:lootWins[p.id]||0,status:p.status}));
+ events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:ps.map(x=>players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`)}});
+ loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":"Ожидает"}));
+ history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
+ document.getElementById("activePlayers").textContent=players.filter(p=>p.status==="active").length;
+ document.getElementById("totalPlayers").textContent=`из ${players.length} участников`;
+ document.getElementById("lootCount").textContent=loot.filter(x=>x.status==="Выдан").length;
+ document.getElementById("attendanceValue").textContent=events.length?"—":"—";
+ const me=players.find(p=>p.id===currentProfile?.player_id);document.getElementById("myDkp").textContent=me?fmt(me.dkp):"0";
+ const sorted=[...players].sort((a,b)=>b.dkp-a.dkp),pos=me?sorted.findIndex(p=>p.id===me.id)+1:0;document.getElementById("myRank").textContent=pos?`#${pos} в рейтинге`:"профиль не связан с игроком";
+ renderDashboard();renderEvents();renderPlayers();renderLoot();renderHistory();
+}
+function fmtDate(v){if(!v)return"—";const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+async function openSession(session){
+ currentUser=session?.user||null;if(!currentUser){document.getElementById("authScreen").classList.remove("hidden");return}
+ const {data,error}=await db.from("profiles").select("id,nickname,role,player_id").eq("id",currentUser.id).single();
+ if(error||!data){await db.auth.signOut();document.getElementById("authError").textContent="Для пользователя не найден профиль в таблице profiles.";return}
+ currentProfile=data;document.getElementById("userName").textContent=data.nickname||currentUser.email;document.getElementById("userAvatar").textContent=initials(data.nickname||"BM");document.getElementById("userRole").textContent=(data.role||"player").toUpperCase();document.querySelectorAll(".staff-only").forEach(el=>el.style.display=["admin","officer"].includes(data.role)?"":"none");document.getElementById("authScreen").classList.add("hidden");
+ try{await loadData()}catch(e){toast("Ошибка загрузки: "+e.message)}
+}
+async function logout(){await db.auth.signOut();location.reload()}
+document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();const btn=document.getElementById("loginBtn"),err=document.getElementById("authError");btn.disabled=true;btn.textContent="Вход...";err.textContent="";const {data,error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});btn.disabled=false;btn.textContent="Войти";if(error){err.textContent="Не удалось войти: "+error.message;return}await openSession(data.session)});
+(async()=>{const {data}=await db.auth.getSession();await openSession(data.session)})();
+
+</script>
+</body>
+</html>
