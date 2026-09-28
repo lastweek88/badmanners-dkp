@@ -126,6 +126,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
       <button data-page="events">◷ &nbsp; События</button>
       <button data-page="players">♙ &nbsp; Игроки</button>
       <button data-page="loot">◆ &nbsp; Лут</button>
+      <button data-page="auctions">◉ &nbsp; Аукционы</button>
       <small>Аналитика</small>
       <button data-page="history">↻ &nbsp; История DKP</button>
       <button data-page="ranking">♛ &nbsp; Рейтинг</button>
@@ -181,6 +182,14 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
         <div class="card table-wrap"><table class="table"><thead><tr><th>Название</th><th>Категория</th><th>Тип</th><th>Грейд</th><th>Заточка</th><th>Раса</th><th>Уровень</th><th>Базовая цена</th><th></th></tr></thead><tbody id="catalogTable"></tbody></table></div>
       </section>
 
+      <section class="page" id="auctions">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Аукционы</h1><div class="subtitle">Открытые торги DKP. Минимальный вход — стартовая цена предмета; шаг считается от неё.</div>
+        <div class="toolbar"><div class="filters"><span class="sub">Одновременно проводится один активный аукцион.</span></div><button class="btn primary staff-only" onclick="newAuction()">+ Начать аукцион</button></div>
+        <div id="activeAuction"></div>
+        <div class="section-head" style="margin-top:22px"><h2>История аукционов</h2></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Дата</th><th>Старт</th><th>Финальная ставка</th><th>Победитель</th><th>Статус</th><th></th></tr></thead><tbody id="auctionHistoryTable"></tbody></table></div>
+      </section>
+
       <section class="page" id="history">
         <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>История DKP</h1><div class="subtitle">Каждое начисление и списание сохраняется отдельной операцией.</div>
         <div class="card table-wrap"><table class="table"><thead><tr><th>Дата</th><th>Игрок</th><th>Причина</th><th>Изменение</th></tr></thead><tbody id="historyTable"></tbody></table></div>
@@ -210,6 +219,8 @@ let players=[];
 let events=[];
 let loot=[];
 let lootItems=[];
+let auctions=[];
+let auctionBids=[];
 let history=[];
 
 function initials(name){return name.slice(0,2).toUpperCase()}
@@ -218,7 +229,7 @@ function go(page){
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  document.getElementById(page).classList.add("active");
  document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
- const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",history:"История DKP",ranking:"Рейтинг"};
+ const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",auctions:"Аукционы",history:"История DKP",ranking:"Рейтинг"};
  document.getElementById("topTitle").textContent=titles[page];
  window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -259,6 +270,34 @@ function renderLoot(){
  document.getElementById("catalogCount").textContent=`${lootItems.length} предметов`;
  document.getElementById("catalogTable").innerHTML=lootItems.length?lootItems.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${catName[x.category]||esc(x.category)}</td><td>${esc(x.item_type)}</td><td>${esc(x.grade||"—")}</td><td>${x.enhancement===null||x.enhancement===undefined?"—":x.enhancement===0?"0":"+"+x.enhancement}</td><td>${esc(x.race)}</td><td>${x.item_level??"—"}</td><td class="cyan"><b>${fmt(x.default_cost)} DKP</b></td><td><div class="actions">${canStaff?`<button class="btn" onclick="editLootItem(${x.id})">Изменить</button>`:""}${isAdmin?`<button class="btn danger" onclick="deleteLootItem(${x.id})">Удалить</button>`:""}</div></td></tr>`).join(""):'<tr><td colspan="9" class="empty">Список пуст. Admin/Officer может добавить первый предмет.</td></tr>';
 }
+
+function auctionItemText(item){if(!item)return "—";return `${item.name} • ${item.item_type}${item.grade?" • "+item.grade:""}${item.enhancement===null||item.enhancement===undefined?"":item.enhancement?" • +"+item.enhancement:" • 0"}`}
+function auctionStatusText(s){return s==="open"?"Идёт":s==="completed"?"Завершён":"Отменён"}
+function renderAuctions(){
+ const box=document.getElementById("activeAuction"), hist=document.getElementById("auctionHistoryTable"); if(!box||!hist)return;
+ const a=auctions.find(x=>x.status==="open"), canStaff=canManagePlayers();
+ if(!a){box.innerHTML='<div class="card empty">Сейчас активного аукциона нет.</div>'}
+ else{
+  const item=lootItems.find(x=>x.id===a.item_id), bids=auctionBids.filter(x=>x.auction_id===a.id), high=bids.length?Math.max(...bids.map(x=>x.amount)):0;
+  const leaders=bids.filter(x=>x.amount===high).map(x=>x.player_id).filter((v,i,ar)=>ar.indexOf(v)===i), me=players.find(p=>p.id===currentProfile?.player_id);
+  const next=high?high+a.step_amount:a.start_cost; let myAction="";
+  if(me){let bid=next,label=`Поставить ${fmt(next)} DKP`;if(me.dkp<next&&me.dkp>high){bid=me.dkp;label=`ALL-IN ${fmt(me.dkp)} DKP`}else if(me.dkp===high&&high>0&&!leaders.includes(me.id)){bid=high;label=`ALL-IN ${fmt(high)} DKP • ничья`};const ok=me.status==="active"&&me.dkp>=a.start_cost&&((me.dkp>=next)||(me.dkp>=high&&high>0&&!leaders.includes(me.id)));myAction=`<button class="btn primary" ${ok?'onclick="placeAuctionBid('+a.id+')"':'disabled'}>${ok?label:'Недостаточно DKP для следующей ставки'}</button><div class="sub" style="margin-top:7px">Ваш баланс: ${fmt(me.dkp)} DKP</div>`}
+  else myAction='<div class="sub">Ваш аккаунт не связан с игроком — ставки недоступны.</div>';
+  const topNames=leaders.map(id=>players.find(p=>p.id===id)?.name||`#${id}`);
+  const rows=[...bids].sort((x,y)=>y.amount-x.amount||new Date(x.created_at)-new Date(y.created_at)).slice(0,20).map(b=>`<tr><td>${fmtDate(b.created_at)}</td><td><b>${esc(players.find(p=>p.id===b.player_id)?.name||'#'+b.player_id)}</b></td><td class="cyan"><b>${fmt(b.amount)} DKP</b>${b.is_all_in?' <span class="badge pending">ALL-IN</span>':''}</td></tr>`).join("");
+  box.innerHTML=`<div class="card" style="padding:18px"><div class="section-head"><div><h2 style="margin-bottom:5px">${esc(auctionItemText(item))}</h2><div class="sub">Аукцион #${a.id} • старт ${fmt(a.start_cost)} • шаг ${a.step_percent}% = ${fmt(a.step_amount)} DKP</div></div><span class="badge accepted">ИДЁТ</span></div><div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin:16px 0"><div class="card stat"><div class="label">Текущая ставка</div><div class="value yellow">${high?fmt(high):'—'}</div><div class="sub">${high?'DKP':'ставок ещё нет'}</div></div><div class="card stat"><div class="label">Лидер</div><div class="value" style="font-size:18px">${topNames.length?esc(topNames.join(' / ')):'—'}</div><div class="sub">${leaders.length>1?'НИЧЬЯ — при завершении будет рулетка':leaders.length?'текущий лидер':'ожидаем первую ставку'}</div></div><div class="card stat"><div class="label">Следующая ставка</div><div class="value cyan">${fmt(next)}</div><div class="sub">DKP</div></div></div><div class="actions" style="margin-bottom:16px">${myAction}${canStaff?`<button class="btn" onclick="finishAuction(${a.id})">Завершить аукцион</button><button class="btn danger" onclick="cancelAuctionModal(${a.id})">Отменить</button>`:""}</div><div class="section-head"><h2>Ставки</h2><span class="sub">${bids.length} операций</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Время</th><th>Игрок</th><th>Ставка</th></tr></thead><tbody>${rows||'<tr><td colspan="3" class="empty">Ставок пока нет.</td></tr>'}</tbody></table></div></div>`;
+ }
+ const closed=auctions.filter(x=>x.status!=="open");hist.innerHTML=closed.length?closed.map(a=>{const item=lootItems.find(x=>x.id===a.item_id),w=players.find(p=>p.id===a.winner_id);return `<tr><td><b>${esc(item?.name||'—')}</b></td><td>${fmtDate(a.created_at)}</td><td>${fmt(a.start_cost)} DKP</td><td class="yellow">${a.winning_bid==null?'—':fmt(a.winning_bid)+' DKP'}</td><td>${esc(w?.name||'—')}</td><td><span class="badge ${a.status==='completed'?'accepted':'cancelled'}">${auctionStatusText(a.status)}</span></td><td><button class="btn" onclick="auctionDetails(${a.id})">Подробнее</button></td></tr>`}).join(""):'<tr><td colspan="7" class="empty">Завершённых аукционов пока нет.</td></tr>';
+}
+function newAuction(){if(!canManagePlayers())return toast("Недостаточно прав");if(auctions.some(a=>a.status==="open"))return toast("Сначала завершите текущий аукцион");if(!lootItems.length)return toast("Сначала добавьте предмет");showModal("Начать аукцион","Стартовая цена — минимальный вход. По умолчанию шаг 10% от старта.",`<form onsubmit="createAuction(event)"><div class="form-grid"><div class="field full"><label>Предмет *</label><select class="select" id="aucItem" style="width:100%" onchange="syncAuctionCost()">${lootItems.map(x=>`<option value="${x.id}">${esc(auctionItemText(x))}</option>`).join('')}</select></div><div class="field"><label>Стартовая цена *</label><input class="input" id="aucStart" type="number" min="0" step="1" style="width:100%"></div><div class="field"><label>Шаг, % от старта *</label><select class="select" id="aucStep" style="width:100%"><option value="5">5%</option><option value="10" selected>10%</option><option value="20">20%</option></select></div><div class="field full"><div class="sub">Игрок с балансом ниже стартовой цены не сможет войти. Если полного шага не хватает, система разрешит ALL-IN остатком. Равная максимальная ALL-IN ставка создаёт ничью и при завершении запускает серверную рулетку.</div></div></div><div class="actions" style="margin-top:18px"><button class="btn primary" id="aucCreateBtn">Начать аукцион</button><button class="btn" type="button" onclick="closeModal()">Отмена</button></div></form>`);syncAuctionCost()}
+function syncAuctionCost(){const x=lootItems.find(i=>i.id===Number(document.getElementById("aucItem")?.value));if(x&&document.getElementById("aucStart"))document.getElementById("aucStart").value=x.default_cost}
+async function createAuction(e){e.preventDefault();const item=Number(document.getElementById("aucItem").value),start=Number(document.getElementById("aucStart").value),step=Number(document.getElementById("aucStep").value);if(!Number.isInteger(start)||start<0)return toast("Проверьте стартовую цену");const btn=document.getElementById("aucCreateBtn");btn.disabled=true;btn.textContent="Создание...";const {error}=await db.rpc("create_auction",{p_item_id:item,p_start_cost:start,p_step_percent:step});if(error){btn.disabled=false;btn.textContent="Начать аукцион";return toast("Ошибка: "+error.message)}closeModal();toast("Аукцион начат");await loadData();go("auctions")}
+async function placeAuctionBid(id){const {data,error}=await db.rpc("place_auction_bid",{p_auction_id:id});if(error)return toast("Ошибка: "+error.message);toast(`Ставка ${fmt(data)} DKP принята`);await loadData();go("auctions")}
+async function finishAuction(id){const a=auctions.find(x=>x.id===id),b=auctionBids.filter(x=>x.auction_id===id);if(!b.length)return toast("Ставок ещё нет");const high=Math.max(...b.map(x=>x.amount)),leaders=[...new Set(b.filter(x=>x.amount===high).map(x=>x.player_id))];const msg=leaders.length>1?`Максимальная ставка ${fmt(high)} DKP у ${leaders.length} игроков. После подтверждения Supabase ОДИН РАЗ выберет победителя рулеткой и сразу спишет DKP. Продолжить?`:`Завершить аукцион? Победитель получит предмет за ${fmt(high)} DKP.`;if(!confirm(msg))return;const {data,error}=await db.rpc("finish_auction",{p_auction_id:id});if(error)return toast("Ошибка: "+error.message);await loadData();const r=Array.isArray(data)?data[0]:data,w=players.find(p=>p.id===Number(r?.winner_id));showModal(r?.used_roulette?"Результат рулетки":"Аукцион завершён",`${w?.name||'Победитель'} • ${fmt(r?.winning_bid||high)} DKP`,`<div class="card stat" style="text-align:center;padding:30px"><div class="label">${r?.used_roulette?'ПОБЕДИТЕЛЬ РУЛЕТКИ':'ПОБЕДИТЕЛЬ АУКЦИОНА'}</div><div class="value" style="font-size:32px;margin:12px 0">${esc(w?.name||'—')}</div><div class="yellow"><b>${fmt(r?.winning_bid||high)} DKP</b></div></div><div class="sub" style="margin-top:12px">Результат уже сохранён в Supabase. Повторно прокрутить эту рулетку нельзя.</div><div style="margin-top:18px"><button class="btn primary" onclick="closeModal();go('loot')">К истории лута</button></div>`);renderAuctions()}
+function cancelAuctionModal(id){showModal("Отменить аукцион","Ставки не списывают DKP, поэтому при отмене возврат не требуется.",`<form onsubmit="cancelAuction(event,${id})"><div class="field"><label>Причина *</label><input class="input" id="aucCancelReason" required maxlength="200" style="width:100%"></div><div class="actions" style="margin-top:18px"><button class="btn danger">Отменить аукцион</button><button class="btn" type="button" onclick="closeModal()">Назад</button></div></form>`)}
+async function cancelAuction(e,id){e.preventDefault();const reason=document.getElementById("aucCancelReason").value.trim();const {error}=await db.rpc("cancel_auction",{p_auction_id:id,p_reason:reason});if(error)return toast("Ошибка: "+error.message);closeModal();toast("Аукцион отменён");await loadData();go("auctions")}
+function auctionDetails(id){const a=auctions.find(x=>x.id===id);if(!a)return;const item=lootItems.find(x=>x.id===a.item_id),bs=auctionBids.filter(x=>x.auction_id===id).sort((x,y)=>new Date(x.created_at)-new Date(y.created_at));showModal(`Аукцион #${a.id}`,auctionItemText(item),`<div class="participant"><span>Старт</span><b>${fmt(a.start_cost)} DKP</b></div><div class="participant"><span>Шаг</span><b>${a.step_percent}% = ${fmt(a.step_amount)} DKP</b></div><div class="participant"><span>Статус</span><b>${auctionStatusText(a.status)}</b></div>${a.winning_bid!=null?`<div class="participant"><span>Финальная ставка</span><b class="yellow">${fmt(a.winning_bid)} DKP</b></div>`:''}${a.winner_id?`<div class="participant"><span>Победитель</span><b>${esc(players.find(p=>p.id===a.winner_id)?.name||'#'+a.winner_id)}</b></div>`:''}${a.cancel_reason?`<div class="participant"><span>Причина отмены</span><b>${esc(a.cancel_reason)}</b></div>`:''}<div class="section-head" style="margin-top:18px"><h2>История ставок</h2></div>${bs.map(b=>`<div class="participant"><span>${fmtDate(b.created_at)} • ${esc(players.find(p=>p.id===b.player_id)?.name||'#'+b.player_id)}</span><b class="cyan">${fmt(b.amount)} DKP${b.is_all_in?' • ALL-IN':''}</b></div>`).join('')||'<div class="empty">Ставок нет.</div>'}`)}
+
 function renderHistory(){
  document.getElementById("historyTable").innerHTML=history.length?history.map(r=>`<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b></td><td>${esc(r[2])}</td><td class="${r[3].startsWith("+")?"positive":"yellow"}"><b>${esc(r[3])}</b></td></tr>`).join(""):'<tr><td colspan="4" class="empty">Операций DKP пока нет.</td></tr>';
 }
@@ -405,21 +444,24 @@ async function awardLoot(e){
 }
 
 async function loadData(){
- const [pr,tx,ev,ep,lt,li]=await Promise.all([
+ const [pr,tx,ev,ep,lt,li,au,ab]=await Promise.all([
   db.from("players").select("id,nickname,character_name,race,class,status,created_at"),
   db.from("dkp_transactions").select("id,player_id,amount,reason,created_at,loot_id").order("created_at",{ascending:false}),
   db.from("events").select("id,name,description,event_date,default_dkp,status,created_at").order("event_date",{ascending:false}),
   db.from("event_participants").select("event_id,player_id,dkp_amount"),
   db.from("loot").select("id,name,description,cost,status,winner_id,awarded_at,created_at,item_id,cancelled_at,cancelled_by,cancel_reason").order("created_at",{ascending:false}),
-  db.from("loot_items").select("id,name,category,item_type,grade,enhancement,race,item_level,default_cost,notes,created_at").order("name",{ascending:true})
+  db.from("loot_items").select("id,name,category,item_type,grade,enhancement,race,item_level,default_cost,notes,created_at").order("name",{ascending:true}),
+  db.from("auctions").select("id,item_id,start_cost,step_percent,step_amount,status,winner_id,winning_bid,loot_id,created_at,closed_at,cancelled_at,cancel_reason").order("created_at",{ascending:false}),
+  db.from("auction_bids").select("id,auction_id,player_id,amount,is_all_in,created_at").order("created_at",{ascending:false})
  ]);
- const err=[pr,tx,ev,ep,lt,li].find(x=>x.error)?.error;if(err) throw err;
+ const err=[pr,tx,ev,ep,lt,li,au,ab].find(x=>x.error)?.error;if(err) throw err;
  const txs=tx.data||[], parts=ep.data||[], rawPlayers=pr.data||[];
  const balances={};txs.forEach(t=>balances[t.player_id]=(balances[t.player_id]||0)+Number(t.amount||0));
  const lootWins={};(lt.data||[]).forEach(x=>{if(x.winner_id&&x.status==="awarded")lootWins[x.winner_id]=(lootWins[x.winner_id]||0)+1});
  players=rawPlayers.map(p=>({id:p.id,name:p.nickname||p.character_name||`#${p.id}`,character_name:p.character_name,race:p.race,playerClass:p.class,dkp:balances[p.id]||0,loot:lootWins[p.id]||0,status:p.status}));
  events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);const participants=ps.map(x=>({name:players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`,dkp:Number(x.dkp_amount||0),player_id:x.player_id}));return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:participants.map(x=>x.name),participants}});
  lootItems=li.data||[];
+ auctions=au.data||[];auctionBids=ab.data||[];
  loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":x.status==="cancelled"?"Отменено":"Ожидает",item_id:x.item_id,cancelled_at:fmtDate(x.cancelled_at),cancel_reason:x.cancel_reason}));
  history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
  document.getElementById("activePlayers").textContent=players.filter(p=>p.status==="active").length;
@@ -428,7 +470,7 @@ async function loadData(){
  document.getElementById("attendanceValue").textContent=events.length?"—":"—";
  const me=players.find(p=>p.id===currentProfile?.player_id);document.getElementById("myDkp").textContent=me?fmt(me.dkp):"0";
  const sorted=[...players].sort((a,b)=>b.dkp-a.dkp),pos=me?sorted.findIndex(p=>p.id===me.id)+1:0;document.getElementById("myRank").textContent=pos?`#${pos} в рейтинге`:"профиль не связан с игроком";
- renderDashboard();renderEvents();renderPlayers();renderLoot();renderHistory();
+ renderDashboard();renderEvents();renderPlayers();renderLoot();renderAuctions();renderHistory();
 }
 function fmtDate(v){if(!v)return"—";const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
 async function openSession(session){
