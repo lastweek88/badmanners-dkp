@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DKP Manager — Prototype</title>
+<style>
+:root{
+  --bg:#000; --panel:#080808; --panel2:#0d0d0d; --panel3:#141414;
+  --line:#242424; --line2:#444; --text:#ededed; --muted:#777;
+  --cyan:#f0f0f0; --green:#72d69a; --yellow:#d7ae54; --red:#d56b72;
+  --shadow:0 14px 36px rgba(0,0,0,.48);
+}
+*{box-sizing:border-box}
+body{margin:0;background:
+ radial-gradient(circle at 20% 0%,rgba(255,255,255,.035),transparent 32%),
+ radial-gradient(circle at 100% 70%,rgba(255,255,255,.025),transparent 35%),
+ var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;border-right:1px solid var(--line);background:rgba(5,9,16,.9);padding:22px 14px;position:fixed;inset:0 auto 0 0;z-index:5}
+.brand{padding:8px 12px 24px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.brand b{display:block;font-size:20px;letter-spacing:.08em}
+.brand span{color:var(--cyan);font-size:11px;letter-spacing:.16em}
+.nav button{width:100%;background:transparent;border:1px solid transparent;color:#9fb3c1;text-align:left;padding:12px 14px;border-radius:5px;margin:3px 0;transition:.18s}
+.nav button:hover{background:#151515;color:#fff}
+.nav button.active{background:linear-gradient(90deg,#181818,#0c0c0c);border-color:var(--line2);color:#fff;box-shadow:inset 3px 0 0 #ffffff}
+.nav small{display:block;color:#587081;padding:18px 14px 7px;font-size:10px;letter-spacing:.13em;text-transform:uppercase}
+.userbox{position:absolute;left:14px;right:14px;bottom:16px;border:1px solid var(--line);background:#0b131f;padding:12px;border-radius:5px}
+.avatar{width:34px;height:34px;border:1px solid #37627b;border-radius:50%;display:grid;place-items:center;color:var(--cyan);font-weight:700}
+.userrow{display:flex;align-items:center;gap:10px}
+.userbox .name{font-weight:700;font-size:13px}.userbox .role{color:var(--muted);font-size:11px;margin-top:2px}
+.main{margin-left:240px;width:calc(100% - 240px)}
+.topbar{height:66px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:rgba(6,11,18,.72);backdrop-filter:blur(8px);position:sticky;top:0;z-index:4}
+.top-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.bm-logo{font-size:15px;font-weight:900;letter-spacing:.08em;color:#fff;text-transform:none;white-space:nowrap}
+.bm-mark{width:27px;height:27px;display:grid;place-items:center;border:1px solid #707070;background:#0b0b0b;color:#fff;font-size:9px;font-weight:900;letter-spacing:.02em}
+.bm-sep{color:#444;font-size:13px}.bm-clan{font-size:8px;color:#666;letter-spacing:.16em;border:1px solid #333;padding:3px 5px}
+.top-title{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.server{display:flex;align-items:center;gap:8px;font-size:12px;color:#a7bac6}.dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 10px rgba(82,214,138,.35)}
+.content{padding:30px;max-width:1450px;margin:auto}
+.page{display:none}.page.active{display:block}
+h1{font-size:25px;margin:0 0 6px}.subtitle{color:var(--muted);font-size:12px;margin-bottom:24px}.page-kicker{font-size:9px;color:#555;letter-spacing:.2em;margin-bottom:7px}
+.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:linear-gradient(145deg,rgba(17,29,43,.94),rgba(9,17,27,.94));border:1px solid var(--line);box-shadow:var(--shadow);border-radius:5px}
+.stat{padding:19px}.stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.stat .value{font-size:28px;font-weight:800;margin-top:8px}.positive{color:var(--green)}.cyan{color:var(--cyan)}.yellow{color:var(--yellow)}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:26px 0 12px}.section-head h2{font-size:15px;margin:0}.linkbtn{background:transparent;border:0;color:var(--cyan);font-size:12px}
+.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:13px}.table th{color:#83a1b2;font-size:10px;text-transform:uppercase;letter-spacing:.1em;text-align:left;padding:13px 14px;background:#09121d;border-bottom:1px solid var(--line)}.table td{padding:14px;border-bottom:1px solid #1b3444;vertical-align:middle}.table tr:hover td{background:rgba(29,63,83,.16)}
+.event-name{font-weight:700}.event-type{font-size:11px;color:#7393a5;margin-top:4px}.sub{color:var(--muted);font-size:11px;margin-top:3px}
+.badge{display:inline-block;padding:5px 9px;border-radius:2px;font-size:11px;font-weight:700}.accepted{color:#7ef0ad;background:#123b29;border:1px solid #226d49}.pending{color:#ffd36a;background:#493613;border:1px solid #76571a}.cancelled{color:#ff9aa2;background:#421d23;border:1px solid #6d3038}
+.btn{border:1px solid #464646;background:#111;color:#ededed;padding:9px 13px;border-radius:3px;font-size:12px}.btn:hover{border-color:#bdbdbd;color:#fff}.btn.primary{background:#242424;border-color:#5a5a5a}.btn.danger{border-color:#71313a;color:#ffabb0}
+.actions{display:flex;gap:8px;align-items:center}
+.two{grid-template-columns:1.35fr .65fr}
+.rank{padding:0}.rank-item{display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #1b3444}.rank-item:last-child{border-bottom:0}.rank-no{width:24px;color:#698798;font-weight:700}.player-avatar{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;background:#171717;border:1px solid #454545;color:#f2f2f2;font-size:11px;font-weight:800}.rank-name{flex:1;font-weight:700}.rank-class{font-size:10px;color:var(--muted);margin-top:3px}.rank-dkp{font-weight:800}
+.filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}.input,.select{background:#09131f;border:1px solid var(--line);color:#dceaf1;padding:10px 11px;border-radius:3px;outline:none}.input:focus,.select:focus{border-color:var(--cyan)}
+.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+.item{font-weight:700}.rarity{font-size:10px;color:#8eb2c4;text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+.price{font-weight:800;color:var(--yellow)}.empty{padding:35px;text-align:center;color:var(--muted)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.68);display:none;place-items:center;z-index:20;padding:20px}.modal-bg.show{display:grid}
+.modal{width:min(720px,100%);background:#0b1420;border:1px solid var(--line2);box-shadow:0 30px 90px #000;padding:22px;border-radius:5px}.modal-head{display:flex;justify-content:space-between;gap:20px;align-items:start}.modal h2{margin:0;font-size:20px}.close{background:transparent;border:0;color:#7f9cac;font-size:24px}.close:hover{color:#fff}.modal-body{margin-top:18px}.participant{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a3242}.participant:last-child{border-bottom:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field label{display:block;color:#7e99a8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.field.full{grid-column:1/-1}
+.toast{position:fixed;right:22px;bottom:22px;background:#181818;border:1px solid #555;padding:12px 16px;border-radius:4px;box-shadow:var(--shadow);display:none;z-index:30;font-size:13px}.toast.show{display:block}
+@media(max-width:900px){.sidebar{width:190px}.main{margin-left:190px;width:calc(100% - 190px)}.stats{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
+@media(max-width:650px){.sidebar{position:static;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line)}.app{display:block}.main{margin-left:0;width:100%}.userbox{position:static;margin-top:15px}.topbar{position:static}.stats{grid-template-columns:1fr}.content{padding:18px}.form-grid{grid-template-columns:1fr}}
+
+/* BadManners Strict Edition */
+body{font-family:Inter,Segoe UI,Arial,sans-serif;letter-spacing:.005em}
+.sidebar{width:218px;padding:18px 10px;background:#000;border-right:1px solid #202020}
+.main{margin-left:218px;width:calc(100% - 218px)}
+.brand{padding:7px 12px 20px;margin-bottom:14px}
+.brand b{font-size:18px;letter-spacing:.12em;text-transform:uppercase}
+.brand span{font-size:9px;letter-spacing:.18em;color:#666}
+.nav button{padding:10px 12px;border-radius:2px;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.nav button.active{background:#151515;border-color:#3d3d3d;box-shadow:inset 2px 0 0 #fff}
+.topbar{height:58px;padding:0 25px;background:#050505;border-bottom:1px solid #222}
+.bm-logo{font-size:14px;letter-spacing:.16em;text-transform:uppercase}
+.bm-mark{border-radius:2px;width:25px;height:25px;background:#fff;color:#000;border-color:#fff}
+.bm-sep{color:#444}
+.content{padding:26px;max-width:1380px}
+h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
+.subtitle{font-size:11px;letter-spacing:.02em}
+.card{border-radius:2px;box-shadow:0 10px 28px rgba(0,0,0,.4)}
+.stat{padding:16px}
+.stat .value{font-size:25px}
+.table{font-size:12px}
+.table th{font-size:9px;padding:11px 13px;letter-spacing:.15em}
+.table td{padding:12px 13px}
+.btn{border-radius:2px;text-transform:uppercase;font-size:10px;letter-spacing:.08em;padding:8px 11px}
+.input,.select{border-radius:2px;font-size:12px;padding:9px 10px;background:#070707}
+.badge{border-radius:1px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:4px 7px}
+.section-head{margin:22px 0 10px}
+.section-head h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+.event-name,.item{font-weight:650}
+.sub,.event-type{font-size:10px;color:#666}
+.rank-item{padding:11px 13px}
+.player-avatar{border-radius:2px;background:#111;border-color:#3a3a3a}
+.userbox{border-radius:2px;background:#080808;border-color:#292929}
+.avatar{border-radius:2px}
+.modal{border-radius:2px;background:#080808;border-color:#444}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><b>BadManners</b><span>DKP MANAGER • CLAN SYSTEM</span></div>
+    <nav class="nav">
+      <small>Основное</small>
+      <button class="active" data-page="dashboard">◈ &nbsp; Главная</button>
+      <button data-page="events">◷ &nbsp; События</button>
+      <button data-page="players">♙ &nbsp; Игроки</button>
+      <button data-page="loot">◆ &nbsp; Лут</button>
+      <small>Аналитика</small>
+      <button data-page="history">↻ &nbsp; История DKP</button>
+      <button data-page="ranking">♛ &nbsp; Рейтинг</button>
+    </nav>
+    <div class="userbox">
+      <div class="userrow"><div class="avatar">AD</div><div><div class="name">Andrey</div><div class="role">ADMIN • 248.6 DKP</div></div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar"><div class="top-brand"><span class="bm-mark">BM</span><span class="bm-logo">BadManners</span><span class="bm-clan">CLAN</span><span class="bm-sep">/</span><div class="top-title" id="topTitle">Главная</div></div><div class="server"><span class="dot"></span> Система работает • 12.08.2026</div></header>
+    <div class="content">
+
+      <section class="page active" id="dashboard">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Главная</h1><div class="subtitle">Сводка клана и последние изменения DKP.</div>
+        <div class="grid stats">
+          <div class="card stat"><div class="label">Мой DKP</div><div class="value cyan">248.6</div><div class="sub">#4 в рейтинге</div></div>
+          <div class="card stat"><div class="label">Посещаемость</div><div class="value positive">87%</div><div class="sub">за последние 30 дней</div></div>
+          <div class="card stat"><div class="label">Активные игроки</div><div class="value">24</div><div class="sub">из 27 участников</div></div>
+          <div class="card stat"><div class="label">Лут за месяц</div><div class="value yellow">18</div><div class="sub">выданных предметов</div></div>
+        </div>
+        <div class="grid two">
+          <div>
+            <div class="section-head"><h2>Последние события</h2><button class="linkbtn" onclick="go('events')">Все события →</button></div>
+            <div class="card table-wrap"><table class="table"><thead><tr><th>Событие</th><th>Дата</th><th>Участники</th><th>DKP</th></tr></thead><tbody id="dashEvents"></tbody></table></div>
+          </div>
+          <div>
+            <div class="section-head"><h2>Топ игроков</h2><button class="linkbtn" onclick="go('ranking')">Полный рейтинг →</button></div>
+            <div class="card rank" id="dashRank"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="events">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>События</h1><div class="subtitle">Рейды, пит-боссы, ChipWar и другие активности клана.</div>
+        <div class="toolbar"><div class="filters"><input class="input" id="eventSearch" placeholder="Поиск события..." oninput="renderEvents()"><select class="select" id="eventStatus" onchange="renderEvents()"><option value="">Все статусы</option><option>Принято</option><option>Ожидает решения</option></select></div><button class="btn primary" onclick="newEvent()">+ Создать событие</button></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Событие</th><th>Дата и окно</th><th>Статус</th><th>Участники</th><th>DKP</th><th></th></tr></thead><tbody id="eventsTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="players">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Игроки</h1><div class="subtitle">Участники клана, DKP и посещаемость.</div>
+        <div class="toolbar"><div class="filters"><input class="input" id="playerSearch" placeholder="Поиск игрока..." oninput="renderPlayers()"><select class="select"><option>Все классы</option><option>Accretia</option><option>Bellato</option><option>Cora</option></select></div><button class="btn primary" onclick="toast('Форма добавления игрока будет подключена на следующем этапе')">+ Добавить игрока</button></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>#</th><th>Игрок</th><th>Класс</th><th>DKP</th><th>Посещаемость</th><th>Лут</th><th></th></tr></thead><tbody id="playersTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="loot">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Лут</h1><div class="subtitle">История распределения предметов и их стоимость в DKP.</div>
+        <div class="toolbar"><div class="filters"><input class="input" id="lootSearch" placeholder="Поиск предмета..." oninput="renderLoot()"><select class="select"><option>Все предметы</option><option>Выдан</option><option>Ожидает распределения</option></select></div><button class="btn primary" onclick="newLoot()">+ Добавить лут</button></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Источник</th><th>Дата</th><th>Победитель</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="history">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>История DKP</h1><div class="subtitle">Каждое начисление и списание сохраняется отдельной операцией.</div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Дата</th><th>Игрок</th><th>Причина</th><th>Изменение</th></tr></thead><tbody id="historyTable"></tbody></table></div>
+      </section>
+
+      <section class="page" id="ranking">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Рейтинг</h1><div class="subtitle">Текущий баланс DKP участников клана.</div>
+        <div class="card rank" id="fullRank"></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-head"><div><h2 id="modalTitle">Подробнее</h2><div class="sub" id="modalSub"></div></div><button class="close" onclick="closeModal()">×</button></div><div class="modal-body" id="modalBody"></div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const players=[
+ {id:1,name:"Andrey",class:"Accretia",dkp:248.6,att:87,loot:4},
+ {id:2,name:"Raptor",class:"Bellato",dkp:412.8,att:94,loot:3},
+ {id:3,name:"Maks",class:"Cora",dkp:361.4,att:91,loot:2},
+ {id:4,name:"KillerOne",class:"Accretia",dkp:294.2,att:88,loot:1},
+ {id:5,name:"Nexus",class:"Bellato",dkp:221.0,att:79,loot:0},
+ {id:6,name:"Sanya",class:"Cora",dkp:186.5,att:76,loot:2},
+ {id:7,name:"Vortex",class:"Accretia",dkp:159.8,att:72,loot:1},
+ {id:8,name:"Revenant",class:"Bellato",dkp:133.4,att:68,loot:0}
+];
+const events=[
+ {id:1,name:"Заставные Пит-Боссы",type:"boss",start:"2026-08-12 00:00",end:"00:45",status:"Принято",count:7,dkp:14,people:["Andrey","Raptor","Maks","KillerOne","Nexus","Vortex","Revenant"]},
+ {id:2,name:"Малый респ",type:"boss",start:"2026-08-12 00:00",end:"00:45",status:"Принято",count:3,dkp:12,people:["Andrey","Raptor","Maks"]},
+ {id:3,name:"Элан Пит-Боссы",type:"boss",start:"2026-08-11 20:00",end:"22:00",status:"Принято",count:7,dkp:110,people:["Raptor","Maks","KillerOne","Nexus","Sanya","Vortex","Revenant"]},
+ {id:4,name:"Заставные Пит-Боссы",type:"boss",start:"2026-08-11 00:00",end:"00:45",status:"Ожидает решения",count:9,dkp:18,people:["Andrey","Raptor","Maks","KillerOne","Nexus","Sanya","Vortex","Revenant","Sable"]},
+ {id:5,name:"Малый респ",type:"boss",start:"2026-08-11 00:00",end:"00:45",status:"Ожидает решения",count:4,dkp:16,people:["Andrey","Maks","Sanya","Vortex"]},
+ {id:6,name:"ChipWar",type:"cw",start:"2026-08-10 22:40",end:"23:30",status:"Ожидает решения",count:6,dkp:48.4,people:["Andrey","Raptor","Maks","KillerOne","Sanya","Vortex"]},
+ {id:7,name:"Заставные Пит-Боссы",type:"boss",start:"2026-08-10 16:00",end:"16:45",status:"Ожидает решения",count:6,dkp:12,people:["Raptor","Maks","KillerOne","Nexus","Sanya","Vortex"]},
+ {id:8,name:"Заставные Пит-Боссы",type:"boss",start:"2026-08-10 00:00",end:"00:45",status:"Ожидает решения",count:6,dkp:12,people:["Andrey","Raptor","Maks","KillerOne","Nexus","Sanya"]},
+ {id:9,name:"ChipWar",type:"cw",start:"2026-08-09 22:30",end:"23:00",status:"Ожидает решения",count:1,dkp:.4,people:["Andrey"]}
+];
+const loot=[
+ {id:1,item:"Меч Акрэции",rarity:"Rare",source:"Элан Пит-Боссы",date:"12.08.2026",winner:"Raptor",price:150,status:"Выдан"},
+ {id:2,item:"Доспех Архангела",rarity:"Epic",source:"Заставные Пит-Боссы",date:"11.08.2026",winner:"Maks",price:90,status:"Выдан"},
+ {id:3,item:"Кольцо Владыки",rarity:"Rare",source:"ChipWar",date:"10.08.2026",winner:"Andrey",price:65,status:"Выдан"},
+ {id:4,item:"Посох Элана",rarity:"Epic",source:"Элан Пит-Боссы",date:"11.08.2026",winner:"—",price:120,status:"Ожидает"}
+];
+const history=[
+ ["12.08.2026 00:45","Andrey","Заставные Пит-Боссы","+14"],
+ ["12.08.2026 00:45","Raptor","Заставные Пит-Боссы","+14"],
+ ["12.08.2026 00:45","Maks","Заставные Пит-Боссы","+14"],
+ ["12.08.2026 00:20","Andrey","Малый респ","+12"],
+ ["11.08.2026 22:05","Maks","Элан Пит-Боссы","+110"],
+ ["10.08.2026 23:32","Andrey","Кольцо Владыки","−65"],
+ ["10.08.2026 23:31","Raptor","Меч Акрэции","−150"]
+];
+
+function initials(name){return name.slice(0,2).toUpperCase()}
+function fmt(n){return Number(n).toLocaleString("ru-RU",{minimumFractionDigits:n%1?1:0,maximumFractionDigits:1})}
+function go(page){
+ document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+ document.getElementById(page).classList.add("active");
+ document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
+ const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",history:"История DKP",ranking:"Рейтинг"};
+ document.getElementById("topTitle").textContent=titles[page];
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
+
+function eventRow(e){
+ return `<tr><td><div class="event-name">${e.name}</div><div class="event-type">${e.type}</div></td>
+ <td>${e.start}<div class="sub">${e.end}</div></td>
+ <td><span class="badge ${e.status==="Принято"?"accepted":"pending"}">${e.status}</span></td>
+ <td>${e.count}</td><td class="cyan"><b>${fmt(e.dkp)}</b></td>
+ <td><button class="btn" onclick="eventDetails(${e.id})">Подробнее</button></td></tr>`;
+}
+function renderEvents(){
+ const q=(document.getElementById("eventSearch").value||"").toLowerCase(), s=document.getElementById("eventStatus").value;
+ document.getElementById("eventsTable").innerHTML=events.filter(e=>(!q||e.name.toLowerCase().includes(q))&&(!s||e.status===s)).map(eventRow).join("");
+}
+function renderDashboard(){
+ document.getElementById("dashEvents").innerHTML=events.slice(0,4).map(e=>`<tr><td><div class="event-name">${e.name}</div><div class="event-type">${e.type}</div></td><td>${e.start}</td><td>${e.count}</td><td class="cyan"><b>${fmt(e.dkp)}</b></td></tr>`).join("");
+ renderRank("dashRank",5); renderRank("fullRank",players.length);
+}
+function renderRank(id,n){
+ const arr=[...players].sort((a,b)=>b.dkp-a.dkp).slice(0,n);
+ document.getElementById(id).innerHTML=arr.map((p,i)=>`<div class="rank-item"><div class="rank-no">${i+1}</div><div class="player-avatar">${initials(p.name)}</div><div class="rank-name">${p.name}<div class="rank-class">${p.class} • ${p.att}% посещаемости</div></div><div class="rank-dkp">${fmt(p.dkp)}</div></div>`).join("");
+}
+function renderPlayers(){
+ const q=(document.getElementById("playerSearch").value||"").toLowerCase();
+ const arr=players.filter(p=>p.name.toLowerCase().includes(q)).sort((a,b)=>b.dkp-a.dkp);
+ document.getElementById("playersTable").innerHTML=arr.map((p,i)=>`<tr><td>${i+1}</td><td><div class="event-name">${p.name}</div><div class="sub">ID #${String(p.id).padStart(3,"0")}</div></td><td>${p.class}</td><td class="cyan"><b>${fmt(p.dkp)}</b></td><td>${p.att}%</td><td>${p.loot}</td><td><button class="btn" onclick="playerDetails(${p.id})">Профиль</button></td></tr>`).join("");
+}
+function renderLoot(){
+ const q=(document.getElementById("lootSearch").value||"").toLowerCase();
+ document.getElementById("lootTable").innerHTML=loot.filter(x=>x.item.toLowerCase().includes(q)).map(x=>`<tr><td><div class="item">${x.item}</div><div class="rarity">${x.rarity}</div></td><td>${x.source}</td><td>${x.date}</td><td>${x.winner}</td><td class="price">${fmt(x.price)}</td><td><span class="badge ${x.status==="Выдан"?"accepted":"pending"}">${x.status}</span></td><td><button class="btn" onclick="lootDetails(${x.id})">Подробнее</button></td></tr>`).join("");
+}
+function renderHistory(){
+ document.getElementById("historyTable").innerHTML=history.map(r=>`<tr><td>${r[0]}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td class="${r[3].startsWith("+")?"positive":"yellow"}"><b>${r[3]}</b></td></tr>`).join("");
+}
+function eventDetails(id){
+ const e=events.find(x=>x.id===id);
+ showModal(e.name,`${e.start} — ${e.end} • ${e.status}`,`<div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px"><div class="card stat"><div class="label">Участники</div><div class="value">${e.count}</div></div><div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(e.dkp)}</div></div><div class="card stat"><div class="label">Статус</div><div class="value" style="font-size:17px">${e.status}</div></div></div><b style="font-size:12px;color:#8ba6b5">УЧАСТНИКИ</b>${e.people.map(p=>`<div class="participant"><span>${p}</span><span class="cyan">+${fmt(e.dkp)}</span></div>`).join("")}<div style="margin-top:18px;display:flex;gap:8px"><button class="btn primary" onclick="toast('Событие подтверждено');closeModal()">Подтвердить событие</button><button class="btn" onclick="closeModal()">Закрыть</button></div>`);
+}
+function playerDetails(id){
+ const p=players.find(x=>x.id===id);
+ showModal(p.name,`${p.class} • участник клана`,`<div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px"><div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(p.dkp)}</div></div><div class="card stat"><div class="label">Посещаемость</div><div class="value positive">${p.att}%</div></div><div class="card stat"><div class="label">Получено лута</div><div class="value">${p.loot}</div></div></div><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ</b>${history.filter(x=>x[1]===p.name).slice(0,5).map(x=>`<div class="participant"><span>${x[2]}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")}`);
+}
+function lootDetails(id){
+ const x=loot.find(a=>a.id===id);
+ showModal(x.item,`${x.rarity} • ${x.source}`,`<div class="participant"><span>Победитель</span><b>${x.winner}</b></div><div class="participant"><span>Стоимость</span><b class="yellow">${fmt(x.price)} DKP</b></div><div class="participant"><span>Дата</span><span>${x.date}</span></div><div class="participant"><span>Статус</span><span class="badge ${x.status==="Выдан"?"accepted":"pending"}">${x.status}</span></div>`);
+}
+function showModal(title,sub,body){document.getElementById("modalTitle").textContent=title;document.getElementById("modalSub").textContent=sub;document.getElementById("modalBody").innerHTML=body;document.getElementById("modalBg").classList.add("show")}
+function closeModal(){document.getElementById("modalBg").classList.remove("show")}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2400)}
+function newEvent(){showModal("Создать событие","Демо-форма — база данных будет подключена на следующем этапе",`<div class="form-grid"><div class="field full"><label>Название</label><input class="input" style="width:100%" value="Заставные Пит-Боссы"></div><div class="field"><label>Начало</label><input class="input" style="width:100%" type="datetime-local" value="2026-08-12T01:00"></div><div class="field"><label>Окончание</label><input class="input" style="width:100%" type="time" value="01:45"></div><div class="field"><label>DKP</label><input class="input" style="width:100%" value="14"></div><div class="field"><label>Статус</label><select class="select" style="width:100%"><option>Ожидает решения</option><option>Принято</option></select></div></div><div style="margin-top:18px;display:flex;gap:8px"><button class="btn primary" onclick="toast('Событие создано в режиме прототипа');closeModal()">Создать</button><button class="btn" onclick="closeModal()">Отмена</button></div>`)}
+function newLoot(){showModal("Добавить лут","Демо-форма",`<div class="form-grid"><div class="field full"><label>Предмет</label><input class="input" style="width:100%" placeholder="Название предмета"></div><div class="field"><label>Источник</label><input class="input" style="width:100%" value="Элан Пит-Босс"></div><div class="field"><label>Стоимость DKP</label><input class="input" style="width:100%" value="100"></div></div><div style="margin-top:18px"><button class="btn primary" onclick="toast('Предмет добавлен в режиме прототипа');closeModal()">Добавить</button></div>`)}
+
+renderDashboard();renderEvents();renderPlayers();renderLoot();renderHistory();
+</script>
+</body>
+</html>
