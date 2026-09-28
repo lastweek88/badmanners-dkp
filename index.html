@@ -170,7 +170,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
       <section class="page" id="players">
         <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Игроки</h1><div class="subtitle">Участники клана, DKP и посещаемость.</div>
         <div class="toolbar"><div class="filters"><input class="input" id="playerSearch" placeholder="Поиск игрока..." oninput="renderPlayers()"><select class="select" id="raceFilter" onchange="renderPlayers()"><option value="">Все расы</option><option value="Accretia">Accretia</option><option value="Bellato">Bellato</option><option value="Cora">Cora</option></select></div><button class="btn primary staff-only" id="addPlayerBtn" onclick="newPlayer()">+ Добавить игрока</button></div>
-        <div class="card table-wrap"><table class="table"><thead><tr><th>#</th><th>Игрок</th><th>Раса</th><th>Класс</th><th>DKP</th><th>Статус</th><th>Лут</th><th></th></tr></thead><tbody id="playersTable"></tbody></table></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>#</th><th>Игрок</th><th>Раса</th><th>Класс</th><th>DKP</th><th>Статус</th><th>Лут</th><th>Аккаунт</th><th></th></tr></thead><tbody id="playersTable"></tbody></table></div>
       </section>
 
       <section class="page" id="loot">
@@ -259,7 +259,7 @@ function renderPlayers(){
  const race=(document.getElementById("raceFilter")?.value||"");
  const arr=players.filter(p=>p.name.toLowerCase().includes(q)&&(!race||p.race===race)).sort((a,b)=>b.dkp-a.dkp);
  const canStaff=["admin","officer"].includes(currentProfile?.role), isAdmin=currentProfile?.role==="admin";
- document.getElementById("playersTable").innerHTML=arr.length?arr.map((p,i)=>`<tr><td>${i+1}</td><td><div class="event-name">${esc(p.name)}</div><div class="sub">ID #${String(p.id).padStart(3,"0")}${p.character_name?` • ${esc(p.character_name)}`:""}</div></td><td>${esc(p.race||"—")}</td><td>${esc(p.playerClass||"—")}</td><td class="cyan"><b>${fmt(p.dkp)}</b></td><td><span class="badge ${p.status==="active"?"accepted":"cancelled"}">${p.status==="active"?"Активен":"Неактивен"}</span></td><td>${p.loot}</td><td><div class="actions"><button class="btn" onclick="playerDetails(${p.id})">Профиль</button>${canStaff?`<button class="btn primary" onclick="openDkpModal(${p.id})">± DKP</button><button class="btn" onclick="editPlayer(${p.id})">Изменить</button>`:""}${isAdmin?`<button class="btn danger" onclick="deletePlayer(${p.id})">Удалить</button>`:""}</div></td></tr>`).join(""):`<tr><td colspan="8" class="empty">Игроков пока нет. ${canStaff?'Нажмите «Добавить игрока».':''}</td></tr>`;
+ document.getElementById("playersTable").innerHTML=arr.length?arr.map((p,i)=>`<tr><td>${i+1}</td><td><div class="event-name">${esc(p.name)}</div><div class="sub">ID #${String(p.id).padStart(3,"0")}${p.character_name?` • ${esc(p.character_name)}`:""}</div></td><td>${esc(p.race||"—")}</td><td>${esc(p.playerClass||"—")}</td><td class="cyan"><b>${fmt(p.dkp)}</b></td><td><span class="badge ${p.status==="active"?"accepted":"cancelled"}">${p.status==="active"?"Активен":"Неактивен"}</span></td><td>${p.loot}</td><td>${(()=>{const a=accountLinks.find(x=>Number(x.player_id)===p.id);return a?`<span class="badge accepted">${esc(a.nickname||"Аккаунт")}</span>`:`<span class="sub">Не привязан</span>`})()}</td><td><div class="actions"><button class="btn" onclick="playerDetails(${p.id})">Профиль</button>${canStaff?`<button class="btn primary" onclick="openDkpModal(${p.id})">± DKP</button><button class="btn" onclick="editPlayer(${p.id})">Изменить</button>`:""}${isAdmin?`<button class="btn" onclick="managePlayerAccount(${p.id})">Аккаунт</button><button class="btn danger" onclick="deletePlayer(${p.id})">Удалить</button>`:""}</div></td></tr>`).join(""):`<tr><td colspan="9" class="empty">Игроков пока нет. ${canStaff?'Нажмите «Добавить игрока».':''}</td></tr>`;
 }
 
 function renderLoot(){
@@ -310,6 +310,23 @@ function playerDetails(id){
  const p=players.find(x=>x.id===id); if(!p)return;
  showModal(esc(p.name),`${esc(p.race||"—")} / ${esc(p.playerClass||"—")} • ${p.status==="active"?"активен":"неактивен"}`,`<div class="grid stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:18px"><div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(p.dkp)}</div></div><div class="card stat"><div class="label">Получено лута</div><div class="value">${p.loot}</div></div></div><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ</b>${history.filter(x=>x[1]===p.name).slice(0,5).map(x=>`<div class="participant"><span>${esc(x[2])}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")||'<div class="empty">Операций DKP пока нет.</div>'}`);
 }
+
+
+function shortId(id){return id?String(id).slice(0,8)+"…":"—"}
+async function refreshAccountLinks(){
+ if(currentProfile?.role!=="admin"){accountLinks=[];return}
+ const {data,error}=await db.rpc("get_account_links");
+ if(error){accountLinks=[];throw error} accountLinks=data||[];
+}
+function managePlayerAccount(playerId){
+ if(currentProfile?.role!=="admin")return toast("Только Admin может менять привязку");
+ const p=players.find(x=>x.id===playerId);if(!p)return;
+ const linked=accountLinks.find(x=>Number(x.player_id)===playerId);
+ const opts=accountLinks.filter(a=>a.player_id==null||Number(a.player_id)===playerId).map(a=>`<option value="${a.profile_id}" ${linked?.profile_id===a.profile_id?'selected':''}>${esc(a.nickname||'Без ника')} • ${(a.role||'player').toUpperCase()} • ${shortId(a.profile_id)}</option>`).join('');
+ showModal("Аккаунт игрока",`${esc(p.name)} • привязка для участия в аукционах`, `<form onsubmit="savePlayerAccount(event,${playerId})"><div class="field"><label>АККАУНТ</label><select class="select" id="accountProfile" style="width:100%"><option value="">— Не привязан —</option>${opts}</select></div><div class="sub" style="margin-top:12px">В списке отображаются аккаунты из profiles, которые ещё не заняты другим игроком. Один аккаунт = один игрок.</div><div class="actions" style="margin-top:18px"><button class="btn primary" type="submit">Сохранить</button>${linked?`<button class="btn danger" type="button" onclick="unlinkPlayerAccount('${linked.profile_id}')">Отвязать</button>`:''}<button class="btn" type="button" onclick="closeModal()">Отмена</button></div></form>`);
+}
+async function savePlayerAccount(e,playerId){e.preventDefault();const profileId=document.getElementById("accountProfile").value;if(!profileId)return toast("Выберите аккаунт или нажмите «Отвязать»");const {error}=await db.rpc("link_account_to_player",{p_profile_id:profileId,p_player_id:playerId});if(error)return toast("Ошибка: "+error.message);closeModal();toast("Аккаунт привязан");await refreshAccountLinks();if(currentProfile.id===profileId)currentProfile.player_id=playerId;await loadData();}
+async function unlinkPlayerAccount(profileId){if(!confirm("Отвязать аккаунт от игрока? Ставки от этого аккаунта будут недоступны, пока его не привяжут снова."))return;const {error}=await db.rpc("unlink_account_from_player",{p_profile_id:profileId});if(error)return toast("Ошибка: "+error.message);closeModal();toast("Аккаунт отвязан");if(currentProfile.id===profileId)currentProfile.player_id=null;await refreshAccountLinks();await loadData();}
 
 function openDkpModal(id){
  if(!canManagePlayers())return toast("Недостаточно прав");
@@ -478,7 +495,7 @@ async function openSession(session){
  const {data,error}=await db.from("profiles").select("id,nickname,role,player_id").eq("id",currentUser.id).single();
  if(error||!data){await db.auth.signOut();document.getElementById("authError").textContent="Для пользователя не найден профиль в таблице profiles.";return}
  currentProfile=data;document.getElementById("userName").textContent=data.nickname||currentUser.email;document.getElementById("userAvatar").textContent=initials(data.nickname||"BM");document.getElementById("userRole").textContent=(data.role||"player").toUpperCase();document.querySelectorAll(".staff-only").forEach(el=>el.style.display=["admin","officer"].includes(data.role)?"":"none");document.getElementById("authScreen").classList.add("hidden");
- try{await loadData()}catch(e){toast("Ошибка загрузки: "+e.message)}
+ try{await refreshAccountLinks();await loadData()}catch(e){toast("Ошибка загрузки: "+e.message)}
 }
 async function logout(){await db.auth.signOut();location.reload()}
 document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();const btn=document.getElementById("loginBtn"),err=document.getElementById("authError");btn.disabled=true;btn.textContent="Вход...";err.textContent="";const {data,error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});btn.disabled=false;btn.textContent="Войти";if(error){err.textContent="Не удалось войти: "+error.message;return}await openSession(data.session)});
