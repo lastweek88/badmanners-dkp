@@ -239,7 +239,7 @@ function initials(name){return name.slice(0,2).toUpperCase()}
 function fmt(n){return Number(n).toLocaleString("ru-RU",{minimumFractionDigits:n%1?1:0,maximumFractionDigits:1})}
 function go(page){
  localStorage.setItem("bm_active_page",page);
- if(location.hash!=="#"+page) history.replaceState(null,"","#"+page);
+ if(location.hash!=="#"+page) window.history.replaceState(null,"","#"+page);
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  document.getElementById(page).classList.add("active");
  document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
