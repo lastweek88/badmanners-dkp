@@ -115,6 +115,15 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#49d17d;margin-right:7px;box-shadow:0 0 8px #49d17d}
 @media(max-width:600px){.roulette-wheel{width:290px;height:290px}.roulette-name{width:116px;font-size:11px;padding-right:9px}.roulette-center{width:66px;height:66px}}
 
+
+/* v8.4 — standalone DKP roulette */
+.game-wheel{position:relative;width:420px;height:420px;border:2px solid #777;border-radius:50%;box-shadow:0 0 0 8px #080808,0 0 0 9px #333;overflow:hidden;transform:rotate(0deg)}
+.game-wheel.spinning{transition:transform var(--spin-time,8s) cubic-bezier(.08,.72,.08,1)}
+.game-wheel-label{position:absolute;left:50%;top:50%;width:172px;height:24px;margin-top:-12px;transform-origin:0 50%;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;box-sizing:border-box;font-weight:900;font-size:13px;text-shadow:0 1px 3px #000;white-space:nowrap;z-index:2}
+.game-wheel-label span{display:block;max-width:115px;overflow:hidden;text-overflow:ellipsis}
+.game-wheel-center{position:absolute;left:50%;top:50%;width:82px;height:82px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #777;background:#090909;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:4}
+.roulette-legend{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.roulette-chip{display:flex;align-items:center;gap:7px;border:1px solid #333;padding:6px 9px;font-size:12px}.roulette-color{width:10px;height:10px;border-radius:2px}
+@media(max-width:650px){.game-wheel{width:300px;height:300px}.game-wheel-label{width:122px;font-size:10px}.game-wheel-label span{max-width:78px}.game-wheel-center{width:66px;height:66px}}
 </style>
 </head>
 <body>
@@ -141,6 +150,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
       <button data-page="players">♙ &nbsp; Игроки</button>
       <button data-page="loot">◆ &nbsp; Лут</button>
       <button data-page="auctions">◉ &nbsp; Аукционы</button>
+      <button data-page="roulette">◎ &nbsp; Рулетка</button>
       <small>Аналитика</small>
       <button data-page="history">↻ &nbsp; История DKP</button>
       <button data-page="ranking">♛ &nbsp; Рейтинг</button>
@@ -204,6 +214,15 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
         <div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Дата</th><th>Старт</th><th>Финальная ставка</th><th>Победитель</th><th>Статус</th><th></th></tr></thead><tbody id="auctionHistoryTable"></tbody></table></div>
       </section>
 
+
+      <section class="page" id="roulette">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Рулетка</h1><div class="subtitle">Отдельные DKP-розыгрыши: один победитель или серия раундов на выбывание.</div>
+        <div class="toolbar"><div class="filters"><span class="sub">1 игрок = 1 равный сектор. Вход оплачивается один раз.</span></div><button class="btn primary staff-only" onclick="newRouletteGame()">+ Создать рулетку</button></div>
+        <div id="activeRoulette"></div>
+        <div class="section-head" style="margin-top:22px"><h2>История рулеток</h2></div>
+        <div class="card table-wrap"><table class="table"><thead><tr><th>Название</th><th>Режим</th><th>Участники</th><th>Вход</th><th>Победитель</th><th>Статус</th><th></th></tr></thead><tbody id="rouletteHistoryTable"></tbody></table></div>
+      </section>
+
       <section class="page" id="history">
         <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>История DKP</h1><div class="subtitle">Каждое начисление и списание сохраняется отдельной операцией.</div>
         <div class="card table-wrap"><table class="table"><thead><tr><th>Дата</th><th>Игрок</th><th>Причина</th><th>Изменение</th></tr></thead><tbody id="historyTable"></tbody></table></div>
@@ -235,6 +254,10 @@ let loot=[];
 let lootItems=[];
 let auctions=[];
 let auctionBids=[];
+let rouletteGames=[];
+let rouletteEntries=[];
+let rouletteRounds=[];
+let rouletteSpinBusy=false;
 let history=[];
 // v8.3.3 realtime/roulette runtime state
 let realtimeChannel=null;
@@ -249,7 +272,7 @@ function go(page){
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  document.getElementById(page).classList.add("active");
  document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
- const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",auctions:"Аукционы",history:"История DKP",ranking:"Рейтинг"};
+ const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",auctions:"Аукционы",roulette:"Рулетка",history:"История DKP",ranking:"Рейтинг"};
  document.getElementById("topTitle").textContent=titles[page];
  window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -327,12 +350,61 @@ async function cancelAuction(e,id){e.preventDefault();const reason=document.getE
 function auctionDetails(id){const a=auctions.find(x=>x.id===id);if(!a)return;const item=lootItems.find(x=>x.id===a.item_id),bs=auctionBids.filter(x=>x.auction_id===id).sort((x,y)=>new Date(x.created_at)-new Date(y.created_at));showModal(`Аукцион #${a.id}`,auctionItemText(item),`<div class="participant"><span>Старт</span><b>${fmt(a.start_cost)} DKP</b></div><div class="participant"><span>Шаг</span><b>${a.step_percent}% = ${fmt(a.step_amount)} DKP</b></div><div class="participant"><span>Интервал</span><b>${a.bid_interval_seconds||30} сек.</b></div><div class="participant"><span>Статус</span><b>${auctionStatusText(a.status)}</b></div>${a.winning_bid!=null?`<div class="participant"><span>Финальная ставка</span><b class="yellow">${fmt(a.winning_bid)} DKP</b></div>`:''}${a.winner_id?`<div class="participant"><span>Победитель</span><b>${esc(players.find(p=>p.id===a.winner_id)?.name||'#'+a.winner_id)}</b></div>`:''}${a.cancel_reason?`<div class="participant"><span>Причина отмены</span><b>${esc(a.cancel_reason)}</b></div>`:''}<div class="section-head" style="margin-top:18px"><h2>История ставок</h2></div>${bs.map(b=>`<div class="participant"><span>${fmtDate(b.created_at)} • ${esc(players.find(p=>p.id===b.player_id)?.name||'#'+b.player_id)}</span><b class="cyan">${fmt(b.amount)} DKP${b.is_all_in?' • ALL-IN':''}</b></div>`).join('')||'<div class="empty">Ставок нет.</div>'}`)}
 
 
+
+const roulettePalette=['#e53935','#fb8c00','#fdd835','#43a047','#00acc1','#1e88e5','#3949ab','#8e24aa','#d81b60','#6d4c41','#7cb342','#00897b','#5e35b1','#c0ca33','#f4511e','#039be5','#ad1457','#546e7a','#7e57c2','#26a69a','#ef6c00','#9e9d24','#00838f','#c62828','#2e7d32','#1565c0','#6a1b9a','#283593','#558b2f','#0277bd','#4527a0','#00897b','#bf360c','#880e4f','#4e342e','#37474f','#33691e','#006064','#311b92','#b71c1c','#827717','#01579b','#1b5e20','#4a148c','#e65100','#263238','#00695c','#512da8','#c2185b','#455a64'];
+function rouletteModeText(m){return m==='winner'?'Победитель':'На выбывание'}
+function rouletteStatusText(s){return s==='open'?'Набор':s==='running'?'Идёт':s==='completed'?'Завершена':'Отменена'}
+function roulettePlayerName(id){return players.find(p=>p.id===Number(id))?.name||`#${id}`}
+function rouletteColor(playerId,gameId){const ids=rouletteEntries.filter(e=>e.roulette_id===gameId).map(e=>Number(e.player_id)).sort((a,b)=>a-b);const i=Math.max(0,ids.indexOf(Number(playerId)));return roulettePalette[i%roulettePalette.length]}
+function rouletteWheelHtml(ids,gameId,wheelId='standaloneWheel'){
+ const n=ids.length;if(!n)return '<div class="empty">Участников пока нет.</div>';const step=360/n;
+ const stops=ids.map((id,i)=>{const c=rouletteColor(id,gameId);return `${c} ${i*step}deg ${(i+1)*step}deg`}).join(',');
+ const labels=ids.map((id,i)=>{const center=(i+.5)*step;return `<div class="game-wheel-label" style="transform:rotate(${center-90}deg) translateX(42px)"><span style="transform:rotate(${90-center}deg)">${esc(roulettePlayerName(id))}</span></div>`}).join('');
+ return `<div class="roulette-stage"><div class="roulette-pointer">▼</div><div class="game-wheel" id="${wheelId}" style="background:conic-gradient(from 0deg,${stops})">${labels}<div class="game-wheel-center">BM</div></div></div>`;
+}
+function renderRoulette(){
+ const box=document.getElementById('activeRoulette'),hist=document.getElementById('rouletteHistoryTable');if(!box||!hist)return;
+ const g=rouletteGames.find(x=>['open','running'].includes(x.status)),canStaff=canManagePlayers(),me=players.find(p=>p.id===currentProfile?.player_id);
+ if(!g)box.innerHTML='<div class="card empty">Сейчас активной рулетки нет.</div>';
+ else{
+  const entries=rouletteEntries.filter(e=>e.roulette_id===g.id),active=entries.filter(e=>e.is_active),joined=me&&entries.some(e=>e.player_id===me.id),full=entries.length>=g.max_players;
+  const legend=entries.map(e=>`<div class="roulette-chip" style="opacity:${e.is_active?1:.35}"><span class="roulette-color" style="background:${rouletteColor(e.player_id,g.id)}"></span>${esc(roulettePlayerName(e.player_id))}${e.is_active?'':' • выбыл'}</div>`).join('');
+  const rounds=rouletteRounds.filter(r=>r.roulette_id===g.id).sort((a,b)=>a.round_no-b.round_no);
+  let action='';
+  if(g.status==='open'){
+    if(me&&!joined)action=`<button class="btn primary" ${full||me.dkp<g.entry_cost?'disabled':''} onclick="joinRoulette(${g.id})">${full?'Мест нет':me.dkp<g.entry_cost?'Недостаточно DKP':`Участвовать — ${fmt(g.entry_cost)} DKP`}</button>`;
+    else if(joined)action='<span class="badge accepted">ВЫ УЧАСТВУЕТЕ</span>';
+    else if(!me)action='<span class="sub">Аккаунт не связан с игроком.</span>';
+    if(canStaff)action+=` <button class="btn" ${entries.length<2?'disabled':''} onclick="startRoulette(${g.id})">Начать</button> <button class="btn danger" onclick="cancelRoulette(${g.id})">Отменить</button>`;
+  }else if(g.status==='running'&&canStaff){action=`<button class="btn primary" ${rouletteSpinBusy?'disabled':''} onclick="spinStandaloneRoulette(${g.id})">${g.mode==='winner'?'КРУТИТЬ':'КРУТИТЬ ДАЛЬШЕ'}</button> <button class="btn danger" onclick="cancelRoulette(${g.id})">Отменить</button>`}
+  const ids=(g.status==='running'?active:entries).map(e=>e.player_id);
+  box.innerHTML=`<div class="card" style="padding:18px"><div class="section-head"><div><h2>${esc(g.title)}</h2><div class="sub">${rouletteModeText(g.mode)} • вход ${fmt(g.entry_cost)} DKP • прокрут ${g.spin_seconds} сек. • ${entries.length}/${g.max_players} участников</div></div><span class="badge accepted">${rouletteStatusText(g.status)}</span></div>${ids.length>=2?rouletteWheelHtml(ids,g.id):'<div class="empty">Для запуска нужно минимум 2 участника.</div>'}<div class="roulette-legend">${legend}</div><div class="actions">${action}</div>${rounds.length?`<div class="section-head" style="margin-top:18px"><h2>Раунды</h2></div>${rounds.map(r=>`<div class="participant"><span>Раунд ${r.round_no}</span><b>${r.result_type==='winner'?'Победитель':'Выбыл'}: ${esc(roulettePlayerName(r.selected_player_id))}</b></div>`).join('')}`:''}</div>`;
+ }
+ const closed=rouletteGames.filter(x=>['completed','cancelled'].includes(x.status));hist.innerHTML=closed.length?closed.map(g=>{const es=rouletteEntries.filter(e=>e.roulette_id===g.id);return `<tr><td><b>${esc(g.title)}</b></td><td>${rouletteModeText(g.mode)}</td><td>${es.length}</td><td>${fmt(g.entry_cost)} DKP</td><td>${g.winner_id?`<b>${esc(roulettePlayerName(g.winner_id))}</b>`:'—'}</td><td><span class="badge ${g.status==='completed'?'accepted':'cancelled'}">${rouletteStatusText(g.status)}</span></td><td><button class="btn" onclick="rouletteDetails(${g.id})">Подробнее</button></td></tr>`}).join(''):'<tr><td colspan="7" class="empty">Истории пока нет.</td></tr>';
+}
+function newRouletteGame(){if(!canManagePlayers())return toast('Недостаточно прав');if(rouletteGames.some(g=>['open','running'].includes(g.status)))return toast('Сначала завершите текущую рулетку');showModal('Создать рулетку','Стоимость входа списывается один раз при регистрации.',`<form onsubmit="createRouletteGame(event)"><div class="form-grid"><div class="field full"><label>Название *</label><input class="input" id="rgTitle" value="Розыгрыш" maxlength="80" required style="width:100%"></div><div class="field"><label>Режим *</label><select class="select" id="rgMode" style="width:100%"><option value="winner">Победитель — 1 прокрут</option><option value="elimination">На выбывание</option></select></div><div class="field"><label>Количество мест *</label><input class="input" id="rgMax" type="number" min="2" max="50" value="10" required style="width:100%"></div><div class="field"><label>Вход, DKP *</label><input class="input" id="rgCost" type="number" min="0" step="1" value="100" required style="width:100%"></div><div class="field"><label>Время прокрута, сек. *</label><input class="input" id="rgSpin" type="number" min="2" max="60" value="8" required style="width:100%"></div></div><div class="actions" style="margin-top:18px"><button class="btn primary">Создать</button><button class="btn" type="button" onclick="closeModal()">Отмена</button></div></form>`)}
+async function createRouletteGame(e){e.preventDefault();const title=document.getElementById('rgTitle').value.trim(),mode=document.getElementById('rgMode').value,max=Number(document.getElementById('rgMax').value),cost=Number(document.getElementById('rgCost').value),spin=Number(document.getElementById('rgSpin').value);const {error}=await db.rpc('create_roulette',{p_title:title,p_mode:mode,p_max_players:max,p_entry_cost:cost,p_spin_seconds:spin});if(error)return toast('Ошибка: '+error.message);closeModal();await loadData();go('roulette')}
+async function joinRoulette(id){const {error}=await db.rpc('join_roulette',{p_roulette_id:id});if(error)return toast('Ошибка: '+error.message);toast('Вы участвуете в рулетке');await loadData();go('roulette')}
+async function startRoulette(id){if(!confirm('Закрыть набор участников и запустить рулетку?'))return;const {error}=await db.rpc('start_roulette',{p_roulette_id:id});if(error)return toast('Ошибка: '+error.message);await loadData();go('roulette')}
+async function cancelRoulette(id){if(!confirm('Отменить эту рулетку?'))return;const {error}=await db.rpc('cancel_roulette',{p_roulette_id:id});if(error)return toast('Ошибка: '+error.message);await loadData();go('roulette')}
+async function spinStandaloneRoulette(id){
+ if(rouletteSpinBusy)return;const g=rouletteGames.find(x=>x.id===id);if(!g)return;const active=rouletteEntries.filter(e=>e.roulette_id===id&&e.is_active);if(active.length<2)return toast('Недостаточно участников');rouletteSpinBusy=true;
+ const ids=active.map(e=>e.player_id);showModal('РУЛЕТКА',g.mode==='winner'?'Определяем победителя':'Раунд на выбывание',rouletteWheelHtml(ids,g.id,'liveGameWheel')+'<div class="roulette-result" id="gameSpinResult">КРУТИМ...</div>');
+ const {data,error}=await db.rpc('spin_roulette',{p_roulette_id:id});if(error){rouletteSpinBusy=false;closeModal();return toast('Ошибка: '+error.message)}const r=Array.isArray(data)?data[0]:data;const selected=Number(r.selected_player_id),idx=ids.indexOf(selected),step=360/ids.length,center=(idx+.5)*step,turns=6+Math.max(0,Math.floor(g.spin_seconds/3)),rotation=turns*360-center;
+ const wheel=document.getElementById('liveGameWheel'),result=document.getElementById('gameSpinResult');if(wheel){wheel.style.setProperty('--spin-time',`${g.spin_seconds}s`);requestAnimationFrame(()=>requestAnimationFrame(()=>{wheel.classList.add('spinning');wheel.style.transform=`rotate(${rotation}deg)`}))}
+ setTimeout(async()=>{const name=roulettePlayerName(selected);if(result)result.innerHTML=g.mode==='winner'?`ПОБЕДИТЕЛЬ: <span class="yellow">${esc(name)}</span>`:`ВЫБЫВАЕТ: <span class="yellow">${esc(name)}</span>`;rouletteSpinBusy=false;await loadData();const winner=Number(r.winner_id||0);if(winner&&result)result.innerHTML+=`<div style="margin-top:10px">ПОБЕДИТЕЛЬ: <span class="yellow">${esc(roulettePlayerName(winner))}</span></div>`;},g.spin_seconds*1000+150);
+}
+function rouletteDetails(id){const g=rouletteGames.find(x=>x.id===id);if(!g)return;const es=rouletteEntries.filter(e=>e.roulette_id===id),rs=rouletteRounds.filter(r=>r.roulette_id===id).sort((a,b)=>a.round_no-b.round_no);showModal(`Рулетка #${g.id}`,g.title,`<div class="participant"><span>Режим</span><b>${rouletteModeText(g.mode)}</b></div><div class="participant"><span>Вход</span><b>${fmt(g.entry_cost)} DKP</b></div><div class="participant"><span>Участники</span><b>${es.length}</b></div>${rs.map(r=>`<div class="participant"><span>Раунд ${r.round_no}</span><b>${r.result_type==='winner'?'Победитель':'Выбыл'}: ${esc(roulettePlayerName(r.selected_player_id))}</b></div>`).join('')}${g.winner_id?`<div class="participant"><span>Итоговый победитель</span><b class="yellow">${esc(roulettePlayerName(g.winner_id))}</b></div>`:''}`)}
+
 function setupRealtime(){
  if(realtimeChannel) db.removeChannel(realtimeChannel);
  realtimeChannel=db.channel('badmanners-live-v83')
   .on('postgres_changes',{event:'*',schema:'public',table:'auction_bids'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'auctions'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'dkp_transactions'},queueRealtimeReload)
+  .on('postgres_changes',{event:'*',schema:'public',table:'roulette_games'},queueRealtimeReload)
+  .on('postgres_changes',{event:'*',schema:'public',table:'roulette_entries'},queueRealtimeReload)
+  .on('postgres_changes',{event:'*',schema:'public',table:'roulette_rounds'},queueRealtimeReload)
   .subscribe(status=>{if(status==='SUBSCRIBED')console.log('BadManners LIVE connected')});
 }
 function queueRealtimeReload(){
@@ -550,7 +622,7 @@ async function awardLoot(e){
 }
 
 async function loadData(){
- const [pr,tx,ev,ep,lt,li,au,ab]=await Promise.all([
+ const [pr,tx,ev,ep,lt,li,au,ab,rg,re,rr]=await Promise.all([
   db.from("players").select("id,nickname,character_name,race,class,status,created_at"),
   db.from("dkp_transactions").select("id,player_id,amount,reason,created_at,loot_id").order("created_at",{ascending:false}),
   db.from("events").select("id,name,description,event_date,default_dkp,status,created_at").order("event_date",{ascending:false}),
@@ -558,16 +630,19 @@ async function loadData(){
   db.from("loot").select("id,name,description,cost,status,winner_id,awarded_at,created_at,item_id,cancelled_at,cancelled_by,cancel_reason").order("created_at",{ascending:false}),
   db.from("loot_items").select("id,name,category,item_type,grade,enhancement,race,item_level,default_cost,notes,created_at").order("name",{ascending:true}),
   db.from("auctions").select("id,item_id,start_cost,step_percent,step_amount,bid_interval_seconds,expires_at,status,winner_id,winning_bid,loot_id,created_at,closed_at,cancelled_at,cancel_reason,roulette_used,roulette_started_at,roulette_participants").order("created_at",{ascending:false}),
-  db.from("auction_bids").select("id,auction_id,player_id,amount,is_all_in,created_at").order("created_at",{ascending:false})
+  db.from("auction_bids").select("id,auction_id,player_id,amount,is_all_in,created_at").order("created_at",{ascending:false}),
+  db.from("roulette_games").select("id,title,mode,max_players,entry_cost,spin_seconds,status,winner_id,created_at,started_at,completed_at,cancelled_at").order("created_at",{ascending:false}),
+  db.from("roulette_entries").select("id,roulette_id,player_id,is_active,joined_at,eliminated_at"),
+  db.from("roulette_rounds").select("id,roulette_id,round_no,selected_player_id,active_player_ids,result_type,created_at").order("round_no",{ascending:true})
  ]);
- const err=[pr,tx,ev,ep,lt,li,au,ab].find(x=>x.error)?.error;if(err) throw err;
+ const err=[pr,tx,ev,ep,lt,li,au,ab,rg,re,rr].find(x=>x.error)?.error;if(err) throw err;
  const txs=tx.data||[], parts=ep.data||[], rawPlayers=pr.data||[];
  const balances={};txs.forEach(t=>balances[t.player_id]=(balances[t.player_id]||0)+Number(t.amount||0));
  const lootWins={};(lt.data||[]).forEach(x=>{if(x.winner_id&&x.status==="awarded")lootWins[x.winner_id]=(lootWins[x.winner_id]||0)+1});
  players=rawPlayers.map(p=>({id:p.id,name:p.nickname||p.character_name||`#${p.id}`,character_name:p.character_name,race:p.race,playerClass:p.class,dkp:balances[p.id]||0,loot:lootWins[p.id]||0,status:p.status}));
  events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);const participants=ps.map(x=>({name:players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`,dkp:Number(x.dkp_amount||0),player_id:x.player_id}));return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:participants.map(x=>x.name),participants}});
  lootItems=li.data||[];
- auctions=au.data||[];auctionBids=ab.data||[];
+ auctions=au.data||[];auctionBids=ab.data||[];rouletteGames=rg.data||[];rouletteEntries=(re.data||[]).map(x=>({...x,player_id:Number(x.player_id),roulette_id:Number(x.roulette_id)}));rouletteRounds=rr.data||[];
  loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":x.status==="cancelled"?"Отменено":"Ожидает",item_id:x.item_id,cancelled_at:fmtDate(x.cancelled_at),cancel_reason:x.cancel_reason}));
  history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
  document.getElementById("activePlayers").textContent=players.filter(p=>p.status==="active").length;
@@ -576,7 +651,7 @@ async function loadData(){
  document.getElementById("attendanceValue").textContent=events.length?"—":"—";
  const me=players.find(p=>p.id===currentProfile?.player_id);document.getElementById("myDkp").textContent=me?fmt(me.dkp):"0";
  const sorted=[...players].sort((a,b)=>b.dkp-a.dkp),pos=me?sorted.findIndex(p=>p.id===me.id)+1:0;document.getElementById("myRank").textContent=pos?`#${pos} в рейтинге`:"профиль не связан с игроком";
- renderDashboard();renderEvents();renderPlayers();renderLoot();renderAuctions();renderHistory();
+ renderDashboard();renderEvents();renderPlayers();renderLoot();renderAuctions();renderRoulette();renderHistory();
  maybeShowLatestRoulette();
 }
 function fmtDate(v){if(!v)return"—";const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
