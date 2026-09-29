@@ -234,6 +234,10 @@ let lootItems=[];
 let auctions=[];
 let auctionBids=[];
 let history=[];
+// v8.3.3 realtime/roulette runtime state
+let realtimeChannel=null;
+let realtimeReloadTimer=null;
+const rouletteShown=new Set();
 
 function initials(name){return name.slice(0,2).toUpperCase()}
 function fmt(n){return Number(n).toLocaleString("ru-RU",{minimumFractionDigits:n%1?1:0,maximumFractionDigits:1})}
