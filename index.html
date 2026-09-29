@@ -116,7 +116,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 </style>
 </head>
 <body>
-<div class="auth-screen" id="authScreen">
+<div class="auth-screen hidden" id="authScreen">
   <div class="auth-box">
     <div class="auth-logo">BadManners</div>
     <div class="auth-desc">Вход в систему управления DKP</div>
@@ -239,6 +239,7 @@ function initials(name){return name.slice(0,2).toUpperCase()}
 function fmt(n){return Number(n).toLocaleString("ru-RU",{minimumFractionDigits:n%1?1:0,maximumFractionDigits:1})}
 function go(page){
  localStorage.setItem("bm_active_page",page);
+ if(location.hash!=="#"+page) history.replaceState(null,"","#"+page);
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  document.getElementById(page).classList.add("active");
  document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
@@ -247,6 +248,7 @@ function go(page){
  window.scrollTo({top:0,behavior:"smooth"});
 }
 document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
+const bootPage=((location.hash||"").replace("#","")||localStorage.getItem("bm_active_page"));if(bootPage&&document.getElementById(bootPage))go(bootPage);
 
 function eventRow(e){
  return `<tr><td><div class="event-name">${e.name}</div><div class="event-type">${e.type}</div></td>
@@ -556,7 +558,8 @@ async function openSession(session){
  const {data,error}=await db.from("profiles").select("id,nickname,role,player_id").eq("id",currentUser.id).single();
  if(error||!data){await db.auth.signOut();document.getElementById("authError").textContent="Для пользователя не найден профиль в таблице profiles.";return}
  currentProfile=data;document.getElementById("userName").textContent=data.nickname||currentUser.email;document.getElementById("userAvatar").textContent=initials(data.nickname||"BM");document.getElementById("userRole").textContent=(data.role||"player").toUpperCase();document.querySelectorAll(".staff-only").forEach(el=>el.style.display=["admin","officer"].includes(data.role)?"":"none");document.getElementById("authScreen").classList.add("hidden");
- try{await refreshAccountLinks();await loadData();setupRealtime();const saved=localStorage.getItem("bm_active_page");if(saved&&document.getElementById(saved))go(saved)}catch(e){toast("Ошибка загрузки: "+e.message)}
+ const hashPage=(location.hash||"").replace("#","");const saved=(hashPage&&document.getElementById(hashPage))?hashPage:localStorage.getItem("bm_active_page");if(saved&&document.getElementById(saved))go(saved);
+ try{await refreshAccountLinks();await loadData();setupRealtime()}catch(e){toast("Ошибка загрузки: "+e.message)}
 }
 async function logout(){if(realtimeChannel)await db.removeChannel(realtimeChannel);await db.auth.signOut();location.reload()}
 document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();const btn=document.getElementById("loginBtn"),err=document.getElementById("authError");btn.disabled=true;btn.textContent="Вход...";err.textContent="";const {data,error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});btn.disabled=false;btn.textContent="Войти";if(error){err.textContent="Не удалось войти: "+error.message;return}await openSession(data.session)});
