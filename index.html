@@ -104,14 +104,16 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 
 /* v8.3 — live auction + roulette */
 .roulette-stage{display:flex;flex-direction:column;align-items:center;gap:18px;padding:18px 0}
-.roulette-pointer{font-size:30px;line-height:1;margin-bottom:-20px;z-index:2}
-.roulette-wheel{position:relative;width:300px;height:300px;border:2px solid #777;border-radius:50%;background:repeating-conic-gradient(#111 0deg 45deg,#222 45deg 90deg);box-shadow:0 0 0 8px #080808,0 0 0 9px #333;overflow:hidden;transition:none}
+.roulette-pointer{font-size:30px;line-height:1;margin-bottom:-20px;z-index:3;filter:drop-shadow(0 2px 2px #000)}
+.roulette-wheel{position:relative;width:360px;height:360px;border:2px solid #777;border-radius:50%;background:repeating-conic-gradient(from -15deg,#111 0deg 30deg,#242424 30deg 60deg);box-shadow:0 0 0 8px #080808,0 0 0 9px #333;overflow:hidden;transition:none}
 .roulette-wheel.spinning{transition:transform 6s cubic-bezier(.12,.72,.08,1)}
-.roulette-name{position:absolute;left:50%;top:50%;width:46%;transform-origin:0 0;text-align:right;font-weight:800;font-size:14px;text-shadow:0 1px 3px #000;white-space:nowrap}
-.roulette-center{position:absolute;left:50%;top:50%;width:76px;height:76px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #777;background:#090909;display:flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:1px}
+.roulette-divider{position:absolute;left:50%;top:50%;width:50%;height:1px;background:#454545;transform-origin:0 50%;z-index:1}
+.roulette-name{position:absolute;left:50%;top:50%;width:145px;height:24px;margin-top:-12px;transform-origin:0 50%;display:flex;align-items:center;justify-content:flex-end;padding-right:14px;box-sizing:border-box;font-weight:900;font-size:13px;letter-spacing:.02em;text-shadow:0 1px 3px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2}
+.roulette-name>span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.roulette-center{position:absolute;left:50%;top:50%;width:76px;height:76px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #777;background:#090909;display:flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:1px;z-index:4}
 .roulette-result{text-align:center;font-size:24px;font-weight:900;min-height:34px}
 .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#49d17d;margin-right:7px;box-shadow:0 0 8px #49d17d}
-@media(max-width:600px){.roulette-wheel{width:250px;height:250px}.roulette-name{font-size:12px}}
+@media(max-width:600px){.roulette-wheel{width:290px;height:290px}.roulette-name{width:116px;font-size:11px;padding-right:9px}.roulette-center{width:66px;height:66px}}
 
 </style>
 </head>
@@ -346,22 +348,33 @@ function maybeShowLatestRoulette(){
  setTimeout(()=>showRouletteAnimation(a),150);
 }
 function showRouletteAnimation(a){
- const ids=(a.roulette_participants||[]).map(Number);
+ const ids=[...new Set((a.roulette_participants||[]).map(Number))];
  if(ids.length<2)return;
  const names=ids.map(id=>players.find(p=>p.id===id)?.name||`#${id}`);
  const winnerIndex=Math.max(0,ids.indexOf(Number(a.winner_id)));
- const n=ids.length, step=360/n;
- const labels=names.map((name,i)=>{const angle=i*step+step/2;return `<div class="roulette-name" style="transform:rotate(${angle}deg) translate(34px,-8px)">${esc(name)}</div>`}).join('');
- showModal('РУЛЕТКА',`Равная максимальная ставка • ${fmt(a.winning_bid)} DKP`,`<div class="roulette-stage"><div class="roulette-pointer">▼</div><div class="roulette-wheel" id="rouletteWheel">${labels}<div class="roulette-center">BM</div></div><div class="roulette-result" id="rouletteResult">Определяем победителя...</div><div class="sub">Результат уже определён сервером и не может быть перекручен.</div></div>`);
+ // Минимум 12 визуальных секторов. Количество всегда кратно числу участников,
+ // поэтому каждый получает одинаковое число секторов и визуально равный шанс.
+ const sectorCount=Math.max(12,Math.ceil(12/ids.length)*ids.length);
+ const step=360/sectorCount;
+ const winnerSectors=[];
+ let pieces='';
+ for(let i=0;i<sectorCount;i++){
+   const participantIndex=i%ids.length;
+   if(participantIndex===winnerIndex)winnerSectors.push(i);
+   const center=i*step+step/2;
+   pieces+=`<div class="roulette-divider" style="transform:rotate(${i*step}deg)"></div>`;
+   pieces+=`<div class="roulette-name" style="transform:rotate(${center}deg) translateX(28px)"><span>${esc(names[participantIndex])}</span></div>`;
+ }
+ showModal('РУЛЕТКА',`Равная максимальная ставка • ${fmt(a.winning_bid)} DKP`,`<div class="roulette-stage"><div class="roulette-pointer">▼</div><div class="roulette-wheel" id="rouletteWheel">${pieces}<div class="roulette-center">BM</div></div><div class="roulette-result" id="rouletteResult">КРУТИМ...</div><div class="sub">${sectorCount} равных секторов • результат уже определён сервером и не может быть перекручен.</div></div>`);
  const wheel=document.getElementById('rouletteWheel');
  const result=document.getElementById('rouletteResult');
- const targetCenter=winnerIndex*step+step/2;
- const finalDeg=360*7+(360-targetCenter);
- const started=new Date(a.roulette_started_at).getTime();
- const elapsed=Math.max(0,Date.now()-started);
+ // Выбираем один из секторов победителя только для красивой точки остановки.
+ // Сам победитель уже зафиксирован Supabase.
+ const stopSector=winnerSectors[Math.abs(Number(a.id)||0)%winnerSectors.length];
+ const targetCenter=stopSector*step+step/2;
+ const finalDeg=360*8+(360-targetCenter);
  requestAnimationFrame(()=>requestAnimationFrame(()=>{wheel.classList.add('spinning');wheel.style.transform=`rotate(${finalDeg}deg)`;}));
- const wait=Math.max(700,6000-Math.min(elapsed,5300));
- setTimeout(()=>{if(result)result.innerHTML=`ПОБЕДИТЕЛЬ: <span class="yellow">${esc(names[winnerIndex])}</span>`;},wait);
+ setTimeout(()=>{if(result)result.innerHTML=`ПОБЕДИТЕЛЬ: <span class="yellow">${esc(names[winnerIndex])}</span>`;},6100);
 }
 
 function renderHistory(){
