@@ -124,6 +124,31 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 .game-wheel-center{position:absolute;left:50%;top:50%;width:82px;height:82px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #777;background:#090909;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:4}
 .roulette-legend{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.roulette-chip{display:flex;align-items:center;gap:7px;border:1px solid #333;padding:6px 9px;font-size:12px}.roulette-color{width:10px;height:10px;border-radius:2px}
 @media(max-width:650px){.game-wheel{width:300px;height:300px}.game-wheel-label{width:122px;font-size:10px}.game-wheel-label span{max-width:78px}.game-wheel-center{width:66px;height:66px}}
+
+/* v8.5 — player loot profile */
+.player-loot-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 18px}
+.player-loot-cat{border:1px solid #333;background:#0a0a0a;min-height:66px;position:relative;overflow:hidden;padding:12px 13px}
+.player-loot-cat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cat)}
+.player-loot-cat .pl-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#888}
+.player-loot-cat .pl-count{font-size:24px;font-weight:900;margin-top:5px;color:var(--cat)}
+.player-loot-section{margin-top:14px;border:1px solid #2e2e2e;background:#070707}
+.player-loot-section-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #2e2e2e}
+.player-loot-section-title{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.player-loot-dot{width:10px;height:10px;background:var(--cat);display:inline-block}
+.player-loot-row{display:grid;grid-template-columns:minmax(180px,1fr) 115px 145px;gap:12px;align-items:center;padding:10px 12px;border-top:1px solid #1d1d1d}
+.player-loot-row:first-child{border-top:0}
+.player-loot-name{font-weight:800;font-size:12px}
+.player-loot-meta{font-size:10px;color:#777;margin-top:3px}
+.player-loot-cost{text-align:right;font-weight:900}
+.player-loot-date{text-align:right;color:#777;font-size:10px}
+.player-loot-filters{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
+.player-loot-filters .btn.active{border-color:#777;background:#202020;color:#fff}
+@media(max-width:760px){
+ .player-loot-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .player-loot-row{grid-template-columns:1fr auto}
+ .player-loot-date{grid-column:1/-1;text-align:left}
+}
+
 </style>
 </head>
 <body>
@@ -481,9 +506,52 @@ function eventDetails(id){
  const rows=(e.participants||[]).map(p=>`<div class="participant"><span>${esc(p.name)}</span><span class="cyan">+${fmt(p.dkp)}</span></div>`).join("")||'<div class="empty">Участников нет.</div>';
  showModal(esc(e.name),`${esc(e.start)} • ${esc(e.status)}`,`<div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px"><div class="card stat"><div class="label">Участники</div><div class="value">${e.count}</div></div><div class="card stat"><div class="label">Базовый DKP</div><div class="value cyan">${fmt(e.dkp)}</div></div><div class="card stat"><div class="label">Статус</div><div class="value" style="font-size:17px">${esc(e.status)}</div></div></div><b style="font-size:12px;color:#8ba6b5">УЧАСТНИКИ И НАЧИСЛЕНИЯ</b>${rows}<div style="margin-top:18px"><button class="btn" onclick="closeModal()">Закрыть</button></div>`);
 }
-function playerDetails(id){
+const PLAYER_LOOT_CATS={
+ armor:{label:"Броня",color:"#3f7ee8"},
+ weapon:{label:"Оружие",color:"#ff8a18"},
+ accessory:{label:"Бижутерия",color:"#e45858"},
+ other:{label:"Прочее",color:"#9b6bd6"}
+};
+function playerLootCategory(item){
+ const def=lootItems.find(x=>Number(x.id)===Number(item.item_id));
+ return PLAYER_LOOT_CATS[def?.category]?def.category:"other";
+}
+function playerLootMeta(item){
+ const def=lootItems.find(x=>Number(x.id)===Number(item.item_id));
+ if(!def)return esc(item.source||"—");
+ const bits=[def.item_type,def.grade];
+ if(def.enhancement!==null&&def.enhancement!==undefined)bits.push(def.enhancement===0?"0":"+"+def.enhancement);
+ if(def.item_level)bits.push("ур. "+def.item_level);
+ return bits.filter(Boolean).map(esc).join(" • ")||esc(item.source||"—");
+}
+function playerDetails(id,days=0){
  const p=players.find(x=>x.id===id); if(!p)return;
- showModal(esc(p.name),`${esc(p.race||"—")} / ${esc(p.playerClass||"—")} • ${p.status==="active"?"активен":"неактивен"}`,`<div class="grid stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:18px"><div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(p.dkp)}</div></div><div class="card stat"><div class="label">Получено лута</div><div class="value">${p.loot}</div></div></div><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ</b>${history.filter(x=>x[1]===p.name).slice(0,5).map(x=>`<div class="participant"><span>${esc(x[2])}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")||'<div class="empty">Операций DKP пока нет.</div>'}`);
+ const cutoff=days?Date.now()-days*86400000:0;
+ const wins=loot.filter(x=>Number(x.winner_id)===Number(id)&&x.status==="Выдан"&&(!cutoff||new Date(x.raw_date).getTime()>=cutoff));
+ const groups={armor:[],weapon:[],accessory:[],other:[]};
+ wins.forEach(x=>groups[playerLootCategory(x)].push(x));
+ const order=["weapon","accessory","armor","other"];
+ const summary=order.map(k=>`<div class="player-loot-cat" style="--cat:${PLAYER_LOOT_CATS[k].color}"><div class="pl-label">${PLAYER_LOOT_CATS[k].label}</div><div class="pl-count">${groups[k].length}</div></div>`).join("");
+ const sections=order.filter(k=>groups[k].length).map(k=>{
+   const c=PLAYER_LOOT_CATS[k];
+   const rows=groups[k].map(x=>`<div class="player-loot-row"><div><div class="player-loot-name">${esc(x.item)}</div><div class="player-loot-meta">${playerLootMeta(x)}</div></div><div class="player-loot-cost" style="color:${c.color}">${fmt(x.price)} DKP</div><div class="player-loot-date">${esc(x.date)}</div></div>`).join("");
+   return `<div class="player-loot-section" style="--cat:${c.color}"><div class="player-loot-section-head"><div class="player-loot-section-title"><span class="player-loot-dot"></span>${c.label}</div><b style="color:${c.color}">${groups[k].length}</b></div>${rows}</div>`;
+ }).join("")||'<div class="empty">За выбранный период выданного лута нет.</div>';
+ const recent=history.filter(x=>x[1]===p.name).slice(0,5).map(x=>`<div class="participant"><span>${esc(x[2])}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")||'<div class="empty">Операций DKP пока нет.</div>';
+ showModal(esc(p.name),`${esc(p.race||"—")} / ${esc(p.playerClass||"—")} • ${p.status==="active"?"активен":"неактивен"}`,`
+ <div class="grid stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
+   <div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(p.dkp)}</div></div>
+   <div class="card stat"><div class="label">Получено лута</div><div class="value">${wins.length}</div></div>
+ </div>
+ <div class="player-loot-filters">
+   <button class="btn ${days===0?"active":""}" onclick="playerDetails(${id},0)">Всё время</button>
+   <button class="btn ${days===30?"active":""}" onclick="playerDetails(${id},30)">30 дней</button>
+   <button class="btn ${days===90?"active":""}" onclick="playerDetails(${id},90)">90 дней</button>
+ </div>
+ <b style="font-size:12px;color:#8ba6b5">ПОЛУЧЕННЫЙ ЛУТ ПО КАТЕГОРИЯМ</b>
+ <div class="player-loot-summary">${summary}</div>
+ ${sections}
+ <div style="margin-top:20px"><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ DKP</b>${recent}</div>`);
 }
 
 
@@ -660,7 +728,7 @@ async function loadData(){
  events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);const participants=ps.map(x=>({name:players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`,dkp:Number(x.dkp_amount||0),player_id:x.player_id}));return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:participants.map(x=>x.name),participants}});
  lootItems=li.data||[];
  auctions=au.data||[];auctionBids=ab.data||[];rouletteGames=rg.data||[];rouletteEntries=(re.data||[]).map(x=>({...x,player_id:Number(x.player_id),roulette_id:Number(x.roulette_id)}));rouletteRounds=rr.data||[];manualRouletteGames=mrg.data||[];manualRouletteEntries=(mre.data||[]).map(x=>({...x,id:Number(x.id),roulette_id:Number(x.roulette_id)}));manualRouletteRounds=mrr.data||[];
- loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":x.status==="cancelled"?"Отменено":"Ожидает",item_id:x.item_id,cancelled_at:fmtDate(x.cancelled_at),cancel_reason:x.cancel_reason}));
+ loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),raw_date:x.awarded_at||x.created_at,winner_id:x.winner_id?Number(x.winner_id):null,winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":x.status==="cancelled"?"Отменено":"Ожидает",item_id:x.item_id,cancelled_at:fmtDate(x.cancelled_at),cancel_reason:x.cancel_reason}));
  history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
  document.getElementById("activePlayers").textContent=players.filter(p=>p.status==="active").length;
  document.getElementById("totalPlayers").textContent=`из ${players.length} участников`;
