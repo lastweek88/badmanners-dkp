@@ -149,6 +149,18 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
  .player-loot-date{grid-column:1/-1;text-align:left}
 }
 
+
+/* v8.5.1 — modal UX hotfix */
+.modal-bg{overflow:hidden}
+.modal{max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{flex:0 0 auto}
+.modal-body{overflow-y:auto;overflow-x:hidden;min-height:0;padding-right:5px}
+.player-loot-scroll{max-height:38vh;overflow-y:auto;overflow-x:hidden;border-top:1px solid transparent;padding-right:4px}
+@media(max-height:760px){
+ .modal{max-height:94vh}
+ .player-loot-scroll{max-height:32vh}
+}
+
 </style>
 </head>
 <body>
@@ -262,7 +274,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
   </main>
 </div>
 
-<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+<div class="modal-bg" id="modalBg">
   <div class="modal"><div class="modal-head"><div><h2 id="modalTitle">Подробнее</h2><div class="sub" id="modalSub"></div></div><button class="close" onclick="closeModal()">×</button></div><div class="modal-body" id="modalBody"></div></div>
 </div>
 <div class="toast" id="toast"></div>
@@ -537,7 +549,7 @@ function playerDetails(id,days=0){
    const rows=groups[k].map(x=>`<div class="player-loot-row"><div><div class="player-loot-name">${esc(x.item)}</div><div class="player-loot-meta">${playerLootMeta(x)}</div></div><div class="player-loot-cost" style="color:${c.color}">${fmt(x.price)} DKP</div><div class="player-loot-date">${esc(x.date)}</div></div>`).join("");
    return `<div class="player-loot-section" style="--cat:${c.color}"><div class="player-loot-section-head"><div class="player-loot-section-title"><span class="player-loot-dot"></span>${c.label}</div><b style="color:${c.color}">${groups[k].length}</b></div>${rows}</div>`;
  }).join("")||'<div class="empty">За выбранный период выданного лута нет.</div>';
- const recent=history.filter(x=>x[1]===p.name).slice(0,5).map(x=>`<div class="participant"><span>${esc(x[2])}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")||'<div class="empty">Операций DKP пока нет.</div>';
+ const recent=history.filter(x=>x[1]===p.name).slice(0,3).map(x=>`<div class="participant"><span>${esc(x[2])}</span><span class="${x[3].startsWith("+")?"positive":"yellow"}">${x[3]}</span></div>`).join("")||'<div class="empty">Операций DKP пока нет.</div>';
  showModal(esc(p.name),`${esc(p.race||"—")} / ${esc(p.playerClass||"—")} • ${p.status==="active"?"активен":"неактивен"}`,`
  <div class="grid stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
    <div class="card stat"><div class="label">DKP</div><div class="value cyan">${fmt(p.dkp)}</div></div>
@@ -550,8 +562,8 @@ function playerDetails(id,days=0){
  </div>
  <b style="font-size:12px;color:#8ba6b5">ПОЛУЧЕННЫЙ ЛУТ ПО КАТЕГОРИЯМ</b>
  <div class="player-loot-summary">${summary}</div>
- ${sections}
- <div style="margin-top:20px"><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ DKP</b>${recent}</div>`);
+ <div class="player-loot-scroll">${sections}</div>
+ <div style="margin-top:20px"><b style="font-size:12px;color:#8ba6b5">ПОСЛЕДНИЕ ОПЕРАЦИИ DKP</b>${recent}<div class="actions" style="margin-top:10px"><button class="btn" onclick="closeModal();go('history')">ВСЯ ИСТОРИЯ DKP</button></div></div>`);
 }
 
 
