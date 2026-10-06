@@ -161,6 +161,9 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
  .player-loot-scroll{max-height:32vh}
 }
 
+
+/* v8.6.1 — daily rewards */
+.daily-card{margin:18px 0 24px;padding:18px}.daily-days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:14px 0}.daily-day{border:1px solid #30343a;padding:10px 6px;text-align:center;min-height:64px}.daily-day b{display:block;font-size:12px;margin-bottom:6px}.daily-day.done{border-color:#245b40;background:#0b1711}.daily-day.current{border-color:#9a6b08;background:#171207}.daily-day.jackpot{border-color:#7d5c16}.daily-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.daily-wheel{position:relative;width:380px;height:380px;border:2px solid #777;border-radius:50%;overflow:hidden;box-shadow:0 0 0 8px #080808,0 0 0 9px #333;transition:none}.daily-wheel.spinning{transition:transform var(--daily-spin,8s) cubic-bezier(.12,.72,.08,1)}.daily-wheel-label{position:absolute;left:50%;top:50%;width:160px;height:22px;margin-top:-11px;transform-origin:0 50%;display:flex;justify-content:flex-end;align-items:center;padding-right:10px;box-sizing:border-box;font-size:11px;font-weight:900;text-shadow:0 1px 3px #000;z-index:2}.daily-wheel-divider{position:absolute;left:50%;top:50%;width:50%;height:1px;background:rgba(255,255,255,.28);transform-origin:0 50%;z-index:1}.daily-pointer{font-size:30px;line-height:1;margin-bottom:-19px;z-index:5}.daily-center{position:absolute;left:50%;top:50%;width:78px;height:78px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #777;background:#090909;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:4}.cash-pending{border:1px solid #9a6b08;padding:10px;margin-top:12px}.daily-result{text-align:center;font-size:23px;font-weight:900;min-height:34px;margin-top:14px}@media(max-width:700px){.daily-days{grid-template-columns:repeat(4,1fr)}.daily-wheel{width:290px;height:290px}.daily-wheel-label{width:120px;font-size:9px}}
 </style>
 </head>
 <body>
@@ -210,6 +213,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
           <div class="card stat"><div class="label">Активные игроки</div><div class="value" id="activePlayers">0</div><div class="sub" id="totalPlayers">из 0 участников</div></div>
           <div class="card stat"><div class="label">Лут всего</div><div class="value yellow" id="lootCount">0</div><div class="sub">выданных предметов</div></div>
         </div>
+        <div class="card daily-card" id="dailyRewardCard"><div class="section-head"><div><h2>Ежедневная награда</h2><div class="sub">Дни 1–6: +5 DKP • День 7: рулетка 95% +50 DKP / 5% 5000 Cash Shop</div></div></div><div id="dailyRewardBox"><div class="empty">Загрузка...</div></div></div>
         <div class="grid two">
           <div>
             <div class="section-head"><h2>Последние события</h2><button class="linkbtn" onclick="go('events')">Все события →</button></div>
@@ -292,6 +296,8 @@ let events=[];
 let loot=[];
 let lootItems=[];
 let lootRequests=[];
+let dailyRewardClaims=[];
+let dailyRewardBusy=false;
 let auctions=[];
 let auctionBids=[];
 let rouletteGames=[];
@@ -464,6 +470,7 @@ function setupRealtime(){
   .on('postgres_changes',{event:'*',schema:'public',table:'auctions'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'dkp_transactions'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'loot_requests'},queueRealtimeReload)
+  .on('postgres_changes',{event:'*',schema:'public',table:'daily_reward_claims'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'roulette_games'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'roulette_entries'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'roulette_rounds'},queueRealtimeReload)
@@ -775,8 +782,54 @@ async function awardLoot(e){
  e.preventDefault();if(!canManagePlayers())return toast("Недостаточно прав");const itemId=Number(document.getElementById("awardItem").value),playerId=Number(document.getElementById("awardPlayer").value),cost=Number(document.getElementById("awardCost").value),comment=document.getElementById("awardComment").value.trim()||null,p=players.find(x=>x.id===playerId);if(!Number.isInteger(cost)||cost<0)return toast("Проверьте стоимость");if(!p||p.dkp<cost)return toast("Недостаточно DKP");const btn=document.getElementById("awardBtn");btn.disabled=true;btn.textContent="Выдача...";const {error}=await db.rpc("award_loot",{p_item_id:itemId,p_player_id:playerId,p_cost:cost,p_comment:comment});if(error){btn.disabled=false;btn.textContent="Выдать лут";return toast("Ошибка: "+error.message)}closeModal();toast(`Лут выдан. Списано ${cost} DKP`);await loadData();go("loot");
 }
 
+
+function kyivDateKey(v=new Date()){
+ return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit'}).format(v);
+}
+function renderDailyReward(){
+ const box=document.getElementById('dailyRewardBox');if(!box)return;
+ const me=players.find(p=>p.id===Number(currentProfile?.player_id));
+ if(!me){box.innerHTML='<div class="empty">Аккаунт не связан с игроком.</div>';return}
+ const mine=dailyRewardClaims.filter(x=>Number(x.player_id)===Number(me.id)).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+ const today=kyivDateKey(),claimedToday=mine.some(x=>x.claim_date===today),nextDay=(mine.length%7)+1;
+ const completedInCycle=mine.length%7;
+ const days=Array.from({length:7},(_,i)=>{const d=i+1,done=d<=completedInCycle,current=!claimedToday&&d===nextDay;return `<div class="daily-day ${done?'done':''} ${current?'current':''} ${d===7?'jackpot':''}"><b>ДЕНЬ ${d}</b><span>${d<7?'+5 DKP':'🎰 JACKPOT'}</span>${done?'<div class="positive">✓</div>':''}</div>`}).join('');
+ const last=mine[mine.length-1];
+ const status=claimedToday?`Сегодня уже получено: <b>${last?.reward_type==='cash_shop'?'5000 CASH SHOP':'+'+fmt(last?.dkp_amount||0)+' DKP'}</b>`:nextDay===7?'Сегодня доступна <b class="yellow">РУЛЕТКА</b>':`Сегодня: <b class="positive">+5 DKP</b>`;
+ const pending=dailyRewardClaims.filter(x=>x.reward_type==='cash_shop'&&x.cash_status==='pending');
+ const adminPending=canManagePlayers()&&pending.length?`<div class="cash-pending"><b class="yellow">CASH SHOP ожидает выдачи: ${pending.length}</b>${pending.map(x=>`<div class="participant"><span>${esc(players.find(p=>p.id===Number(x.player_id))?.name||'#'+x.player_id)} • 5000 Cash Shop • ${fmtDate(x.created_at)}</span><button class="btn" onclick="markDailyCashIssued(${x.id})">ВЫДАНО</button></div>`).join('')}</div>`:'';
+ box.innerHTML=`<div class="daily-days">${days}</div><div class="daily-actions"><div><div>${status}</div><div class="sub">Прогресс не сбрасывается, если пропустить день. Новый день считается по Europe/Kyiv.</div></div><button class="btn primary" ${claimedToday||dailyRewardBusy?'disabled':''} onclick="claimDailyReward()">${claimedToday?'ПОЛУЧЕНО':nextDay===7?'КРУТИТЬ РУЛЕТКУ':'ЗАБРАТЬ +5 DKP'}</button></div>${adminPending}`;
+}
+async function claimDailyReward(){
+ if(dailyRewardBusy)return;dailyRewardBusy=true;renderDailyReward();
+ const {data,error}=await db.rpc('claim_daily_reward');
+ if(error){dailyRewardBusy=false;renderDailyReward();return toast('Ошибка: '+error.message)}
+ const r=Array.isArray(data)?data[0]:data;const claimId=Number(r.claim_id);
+ await loadData();
+ db.functions.invoke('telegram-notify',{body:{daily_claim_id:claimId}}).then(({error})=>{if(error)console.warn('Daily Telegram notify failed',error)});
+ if(Number(r.day_no)===7){showDailyRoulette(r)}else toast(`Ежедневная награда: +${r.dkp_amount} DKP`);
+ dailyRewardBusy=false;renderDailyReward();
+}
+function dailyWheelHtml(){
+ const colors=['#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#10b981','#14b8a6','#06b6d4','#0ea5e9','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e','#fb7185','#64748b','#f5c542'];
+ const step=18;let stops=[];for(let i=0;i<20;i++)stops.push(`${colors[i]} ${i*step}deg ${(i+1)*step}deg`);let pieces='';
+ for(let i=0;i<20;i++){const center=i*step+step/2;pieces+=`<div class="daily-wheel-divider" style="transform:rotate(${i*step}deg)"></div><div class="daily-wheel-label" style="transform:rotate(${center}deg) translateX(30px)"><span>${i===19?'5000 CASH':'+50 DKP'}</span></div>`}
+ return `<div class="roulette-stage"><div class="daily-pointer">▼</div><div class="daily-wheel" id="dailyWheel" style="background:conic-gradient(from 0deg,${stops.join(',')})">${pieces}<div class="daily-center">DAY 7</div></div><div class="daily-result" id="dailyResult">КРУТИМ...</div></div>`;
+}
+function showDailyRoulette(r){
+ showModal('DAY 7 — РУЛЕТКА','95% — +50 DKP • 5% — 5000 Cash Shop',dailyWheelHtml());
+ const wheel=document.getElementById('dailyWheel'),result=document.getElementById('dailyResult'),isCash=r.reward_type==='cash_shop';
+ const sector=isCash?19:Math.floor(Math.random()*19),step=18,target=sector*step+step/2,align=((270-target)%360+360)%360,finalDeg=360*8+align;
+ wheel.style.setProperty('--daily-spin','8s');requestAnimationFrame(()=>requestAnimationFrame(()=>{wheel.classList.add('spinning');wheel.style.transform=`rotate(${finalDeg}deg)`}));
+ setTimeout(()=>{if(result)result.innerHTML=isCash?'🏆 <span class="yellow">JACKPOT — 5000 CASH SHOP</span>':'🎁 <span class="positive">+50 DKP</span>';},8150);
+}
+async function markDailyCashIssued(id){
+ if(!canManagePlayers())return toast('Недостаточно прав');if(!confirm('Отметить 5000 Cash Shop как выданные игроку?'))return;
+ const {error}=await db.rpc('mark_daily_cash_issued',{p_claim_id:id});if(error)return toast('Ошибка: '+error.message);toast('Cash Shop отмечен как выданный');await loadData();
+}
+
 async function loadData(){
- const [pr,tx,ev,ep,lt,li,lr,au,ab,rg,re,rr,mrg,mre,mrr]=await Promise.all([
+ const [pr,tx,ev,ep,lt,li,lr,dr,au,ab,rg,re,rr,mrg,mre,mrr]=await Promise.all([
   db.from("players").select("id,nickname,character_name,race,class,status,created_at"),
   db.from("dkp_transactions").select("id,player_id,amount,reason,created_at,loot_id").order("created_at",{ascending:false}),
   db.from("events").select("id,name,description,event_date,default_dkp,status,created_at").order("event_date",{ascending:false}),
@@ -784,6 +837,7 @@ async function loadData(){
   db.from("loot").select("id,name,description,cost,status,winner_id,awarded_at,created_at,item_id,cancelled_at,cancelled_by,cancel_reason").order("created_at",{ascending:false}),
   db.from("loot_items").select("id,name,category,item_type,grade,enhancement,race,item_level,default_cost,notes,created_at").order("name",{ascending:true}),
   db.from("loot_requests").select("id,player_id,item_id,requested_cost,status,player_note,created_at,resolved_at,resolution_note,loot_id").order("created_at",{ascending:false}),
+  db.from("daily_reward_claims").select("id,player_id,claim_date,day_no,reward_type,dkp_amount,cash_shop_amount,cash_status,created_at,cash_issued_at").order("created_at",{ascending:false}),
   db.from("auctions").select("id,item_id,start_cost,step_percent,step_amount,bid_interval_seconds,expires_at,status,winner_id,winning_bid,loot_id,created_at,closed_at,cancelled_at,cancel_reason,roulette_used,roulette_started_at,roulette_participants").order("created_at",{ascending:false}),
   db.from("auction_bids").select("id,auction_id,player_id,amount,is_all_in,created_at").order("created_at",{ascending:false}),
   db.from("roulette_games").select("id,title,mode,max_players,entry_cost,spin_seconds,status,winner_id,created_at,started_at,completed_at,cancelled_at").order("created_at",{ascending:false}),
@@ -793,13 +847,13 @@ async function loadData(){
   db.from("manual_roulette_entries").select("id,roulette_id,display_name,sort_order,is_active,eliminated_at"),
   db.from("manual_roulette_rounds").select("id,roulette_id,round_no,selected_entry_id,active_entry_ids,result_type,created_at").order("round_no",{ascending:true})
  ]);
- const err=[pr,tx,ev,ep,lt,li,lr,au,ab,rg,re,rr,mrg,mre,mrr].find(x=>x.error)?.error;if(err) throw err;
+ const err=[pr,tx,ev,ep,lt,li,lr,dr,au,ab,rg,re,rr,mrg,mre,mrr].find(x=>x.error)?.error;if(err) throw err;
  const txs=tx.data||[], parts=ep.data||[], rawPlayers=pr.data||[];
  const balances={};txs.forEach(t=>balances[t.player_id]=(balances[t.player_id]||0)+Number(t.amount||0));
  const lootWins={};(lt.data||[]).forEach(x=>{if(x.winner_id&&x.status==="awarded")lootWins[x.winner_id]=(lootWins[x.winner_id]||0)+1});
  players=rawPlayers.map(p=>({id:p.id,name:p.nickname||p.character_name||`#${p.id}`,character_name:p.character_name,race:p.race,playerClass:p.class,dkp:balances[p.id]||0,loot:lootWins[p.id]||0,status:p.status}));
  events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);const participants=ps.map(x=>({name:players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`,dkp:Number(x.dkp_amount||0),player_id:x.player_id}));return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:participants.map(x=>x.name),participants}});
- lootItems=li.data||[];lootRequests=(lr.data||[]).map(x=>({...x,id:Number(x.id),player_id:Number(x.player_id),item_id:Number(x.item_id),requested_cost:Number(x.requested_cost)}));
+ lootItems=li.data||[];dailyRewardClaims=dr.data||[];lootRequests=(lr.data||[]).map(x=>({...x,id:Number(x.id),player_id:Number(x.player_id),item_id:Number(x.item_id),requested_cost:Number(x.requested_cost)}));
  auctions=au.data||[];auctionBids=ab.data||[];rouletteGames=rg.data||[];rouletteEntries=(re.data||[]).map(x=>({...x,player_id:Number(x.player_id),roulette_id:Number(x.roulette_id)}));rouletteRounds=rr.data||[];manualRouletteGames=mrg.data||[];manualRouletteEntries=(mre.data||[]).map(x=>({...x,id:Number(x.id),roulette_id:Number(x.roulette_id)}));manualRouletteRounds=mrr.data||[];
  loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),raw_date:x.awarded_at||x.created_at,winner_id:x.winner_id?Number(x.winner_id):null,winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":x.status==="cancelled"?"Отменено":"Ожидает",item_id:x.item_id,cancelled_at:fmtDate(x.cancelled_at),cancel_reason:x.cancel_reason}));
  history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
@@ -809,7 +863,7 @@ async function loadData(){
  document.getElementById("attendanceValue").textContent=events.length?"—":"—";
  const me=players.find(p=>p.id===currentProfile?.player_id);document.getElementById("myDkp").textContent=me?fmt(me.dkp):"0";
  const sorted=[...players].sort((a,b)=>b.dkp-a.dkp),pos=me?sorted.findIndex(p=>p.id===me.id)+1:0;document.getElementById("myRank").textContent=pos?`#${pos} в рейтинге`:"профиль не связан с игроком";
- renderDashboard();renderEvents();renderPlayers();renderLoot();renderAuctions();renderRoulette();renderHistory();
+ renderDashboard();renderDailyReward();renderEvents();renderPlayers();renderLoot();renderAuctions();renderRoulette();renderHistory();
  maybeShowLatestRoulette();
 }
 function fmtDate(v){if(!v)return"—";const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
