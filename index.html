@@ -164,6 +164,9 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 
 /* v8.6.1 — daily rewards */
 .daily-card{margin:18px 0 24px;padding:18px}.daily-days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:14px 0}.daily-day{border:1px solid #30343a;padding:10px 6px;text-align:center;min-height:64px}.daily-day b{display:block;font-size:12px;margin-bottom:6px}.daily-day.done{border-color:#245b40;background:#0b1711}.daily-day.current{border-color:#9a6b08;background:#171207}.daily-day.jackpot{border-color:#7d5c16}.daily-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.daily-wheel{position:relative;width:380px;height:380px;border:2px solid #777;border-radius:50%;overflow:hidden;box-shadow:0 0 0 8px #080808,0 0 0 9px #333;transition:none}.daily-wheel.spinning{transition:transform var(--daily-spin,8s) cubic-bezier(.12,.72,.08,1)}.daily-wheel-label{position:absolute;left:50%;top:50%;width:160px;height:22px;margin-top:-11px;transform-origin:0 50%;display:flex;justify-content:flex-end;align-items:center;padding-right:10px;box-sizing:border-box;font-size:11px;font-weight:900;text-shadow:0 1px 3px #000;z-index:2}.daily-wheel-divider{position:absolute;left:50%;top:50%;width:50%;height:1px;background:rgba(255,255,255,.28);transform-origin:0 50%;z-index:1}.daily-pointer{font-size:30px;line-height:1;margin-bottom:-19px;z-index:5}.daily-center{position:absolute;left:50%;top:50%;width:78px;height:78px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #777;background:#090909;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:4}.cash-pending{border:1px solid #9a6b08;padding:10px;margin-top:12px}.daily-result{text-align:center;font-size:23px;font-weight:900;min-height:34px;margin-top:14px}@media(max-width:700px){.daily-days{grid-template-columns:repeat(4,1fr)}.daily-wheel{width:290px;height:290px}.daily-wheel-label{width:120px;font-size:9px}}
+
+/* v8.6.2 — Guild Cash Shop Treasury */
+.treasury-card{margin:0 0 24px;padding:18px}.treasury-top{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:10px;margin:12px 0}.treasury-main,.treasury-stat{border:1px solid #30343a;background:#080808;padding:14px}.treasury-main .value{font-size:30px;font-weight:900;color:#f2c14e}.treasury-stat .value{font-size:20px;font-weight:900;margin-top:6px}.treasury-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.treasury-history{margin-top:12px;border:1px solid #292929}.treasury-row{display:grid;grid-template-columns:minmax(180px,1fr) 130px 150px;gap:12px;padding:10px 12px;border-top:1px solid #202020;align-items:center}.treasury-row:first-child{border-top:0}.treasury-amount{text-align:right;font-weight:900}.treasury-date{text-align:right;color:#777;font-size:10px}.treasury-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:300px;overflow:auto;border:1px solid #292929;padding:10px}.treasury-check{display:flex;align-items:center;gap:8px;border:1px solid #222;padding:8px}.treasury-preview{margin:12px 0;border:1px solid #333;padding:12px}.treasury-pending{margin-top:12px;border-top:1px solid #333;padding-top:12px}@media(max-width:800px){.treasury-top{grid-template-columns:repeat(2,1fr)}.treasury-row{grid-template-columns:1fr auto}.treasury-date{grid-column:1/-1;text-align:left}.treasury-checks{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -213,7 +216,8 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
           <div class="card stat"><div class="label">Активные игроки</div><div class="value" id="activePlayers">0</div><div class="sub" id="totalPlayers">из 0 участников</div></div>
           <div class="card stat"><div class="label">Лут всего</div><div class="value yellow" id="lootCount">0</div><div class="sub">выданных предметов</div></div>
         </div>
-        <div class="card daily-card" id="dailyRewardCard"><div class="section-head"><div><h2>Ежедневная награда</h2><div class="sub">Дни 1–6: +5 DKP • День 7: рулетка 95% +50 DKP / 5% 5000 Cash Shop</div></div></div><div id="dailyRewardBox"><div class="empty">Загрузка...</div></div></div>
+        <div class="card daily-card" id="dailyRewardCard"><div class="section-head"><div><h2>Ежедневная награда</h2></div></div><div id="dailyRewardBox"><div class="empty">Загрузка...</div></div></div>
+        <div class="card treasury-card" id="guildTreasuryCard"><div class="section-head"><div><h2>Казна гильдии — Cash Shop</h2><div class="sub">Общая касса от продажи гильдейского лута.</div></div></div><div id="guildTreasuryBox"><div class="empty">Загрузка...</div></div></div>
         <div class="grid two">
           <div>
             <div class="section-head"><h2>Последние события</h2><button class="linkbtn" onclick="go('events')">Все события →</button></div>
@@ -298,6 +302,9 @@ let lootItems=[];
 let lootRequests=[];
 let dailyRewardClaims=[];
 let dailyRewardBusy=false;
+let guildCashTransactions=[];
+let guildCashDistributions=[];
+let guildCashAllocations=[];
 let auctions=[];
 let auctionBids=[];
 let rouletteGames=[];
@@ -471,6 +478,8 @@ function setupRealtime(){
   .on('postgres_changes',{event:'*',schema:'public',table:'dkp_transactions'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'loot_requests'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'daily_reward_claims'},queueRealtimeReload)
+  .on('postgres_changes',{event:'*',schema:'public',table:'guild_cash_transactions'},queueRealtimeReload)
+  .on('postgres_changes',{event:'*',schema:'public',table:'guild_cash_distribution_players'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'roulette_games'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'roulette_entries'},queueRealtimeReload)
   .on('postgres_changes',{event:'*',schema:'public',table:'roulette_rounds'},queueRealtimeReload)
@@ -786,6 +795,23 @@ async function awardLoot(e){
 function kyivDateKey(v=new Date()){
  return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit'}).format(v);
 }
+function renderGuildTreasury(){
+ const box=document.getElementById('guildTreasuryBox');if(!box)return;
+ const balance=guildCashTransactions.reduce((n,x)=>n+Number(x.amount||0),0);
+ const income=guildCashTransactions.filter(x=>Number(x.amount)>0).reduce((n,x)=>n+Number(x.amount||0),0);
+ const distributed=Math.abs(guildCashTransactions.filter(x=>x.kind==='distribution').reduce((n,x)=>n+Number(x.amount||0),0));
+ const pending=guildCashAllocations.filter(x=>x.status==='pending');
+ const canStaff=canManagePlayers();
+ const recent=guildCashTransactions.slice(0,8).map(x=>`<div class="treasury-row"><div><b>${esc(x.item_name||x.source||'Операция')}</b><div class="sub">${esc(x.note||x.source||'—')}</div></div><div class="treasury-amount ${Number(x.amount)>=0?'positive':'yellow'}">${Number(x.amount)>=0?'+':''}${fmt(x.amount)} CS</div><div class="treasury-date">${fmtDate(x.created_at)}</div></div>`).join('');
+ const pendingHtml=pending.length?`<div class="treasury-pending"><div class="label">ОЖИДАЮТ ВЫДАЧИ</div>${pending.slice(0,12).map(a=>`<div class="participant"><span>${esc(players.find(p=>Number(p.id)===Number(a.player_id))?.name||'#'+a.player_id)} • <b>${fmt(a.amount)} CS</b></span>${canStaff?`<button class="btn" onclick="markGuildCashIssued(${a.id})">ВЫДАНО</button>`:'<span class="badge pending">ОЖИДАЕТ</span>'}</div>`).join('')}</div>`:'';
+ box.innerHTML=`<div class="treasury-top"><div class="treasury-main"><div class="label">ДОСТУПНО В КАЗНЕ</div><div class="value">${fmt(balance)} CS</div></div><div class="treasury-stat"><div class="label">ПОЛУЧЕНО ВСЕГО</div><div class="value positive">${fmt(income)} CS</div></div><div class="treasury-stat"><div class="label">РАСПРЕДЕЛЕНО</div><div class="value">${fmt(distributed)} CS</div></div><div class="treasury-stat"><div class="label">ОЖИДАЮТ ВЫДАЧИ</div><div class="value yellow">${pending.length}</div></div></div>${canStaff?`<div class="treasury-actions"><button class="btn primary" onclick="newGuildCashIncome()">+ ДОБАВИТЬ ДОХОД</button><button class="btn" ${balance<=0?'disabled':''} onclick="newGuildCashDistribution()">РАСПРЕДЕЛИТЬ</button></div>`:''}<div class="label">ПОСЛЕДНИЕ ОПЕРАЦИИ</div><div class="treasury-history">${recent||'<div class="empty">Операций пока нет.</div>'}</div>${pendingHtml}`;
+}
+function newGuildCashIncome(){if(!canManagePlayers())return toast('Недостаточно прав');showModal('Добавить Cash Shop','Доход от продажи гильдейского лута.',`<form onsubmit="saveGuildCashIncome(event)"><label>Сумма, CS *</label><input class="input" id="cashIncomeAmount" type="number" min="1" step="1" required><label>Источник</label><input class="input" id="cashIncomeSource" value="Продажа предмета"><label>Предмет</label><input class="input" id="cashIncomeItem" placeholder="Например: Тип C броненаручи +6"><label>Комментарий</label><textarea class="input" id="cashIncomeNote" rows="3" placeholder="Продано на аукционе"></textarea><div class="modal-actions"><button class="btn primary">ДОБАВИТЬ</button><button type="button" class="btn" onclick="closeModal()">ОТМЕНА</button></div></form>`)}
+async function saveGuildCashIncome(e){e.preventDefault();const amount=Number(document.getElementById('cashIncomeAmount').value);const {error}=await db.rpc('add_guild_cash_income',{p_amount:amount,p_source:document.getElementById('cashIncomeSource').value.trim(),p_item_name:document.getElementById('cashIncomeItem').value.trim()||null,p_note:document.getElementById('cashIncomeNote').value.trim()||null});if(error)return toast('Ошибка: '+error.message);closeModal();toast(`В казну добавлено ${fmt(amount)} CS`);await loadData()}
+function newGuildCashDistribution(){if(!canManagePlayers())return toast('Недостаточно прав');const balance=guildCashTransactions.reduce((n,x)=>n+Number(x.amount||0),0);const active=players.filter(p=>p.status==='active');showModal('Распределить Cash Shop',`В казне: ${fmt(balance)} CS`,`<div class="treasury-checks">${active.map(p=>`<label class="treasury-check"><input type="checkbox" class="cash-dist-player" value="${p.id}" checked onchange="updateGuildCashPreview()"><span>${esc(p.name)}</span></label>`).join('')}</div><div class="treasury-preview" id="cashDistPreview"></div><label>Комментарий</label><input class="input" id="cashDistNote" placeholder="Например: распределение за первую неделю"><div class="modal-actions"><button class="btn primary" onclick="saveGuildCashDistribution()">ПОДТВЕРДИТЬ</button><button class="btn" onclick="closeModal()">ОТМЕНА</button></div>`);updateGuildCashPreview()}
+function updateGuildCashPreview(){const el=document.getElementById('cashDistPreview');if(!el)return;const balance=guildCashTransactions.reduce((n,x)=>n+Number(x.amount||0),0),ids=[...document.querySelectorAll('.cash-dist-player:checked')],count=ids.length,each=count?Math.floor(balance/count):0,total=each*count;el.innerHTML=`Выбрано: <b>${count}</b><br>На одного: <b class="yellow">${fmt(each)} CS</b><br>Распределится: <b>${fmt(total)} CS</b><br>Останется: <b>${fmt(balance-total)} CS</b>`}
+async function saveGuildCashDistribution(){const ids=[...document.querySelectorAll('.cash-dist-player:checked')].map(x=>Number(x.value));if(!ids.length)return toast('Выберите хотя бы одного игрока');if(!confirm(`Распределить текущую казну между ${ids.length} игроками?`))return;const {data,error}=await db.rpc('create_guild_cash_distribution',{p_player_ids:ids,p_note:document.getElementById('cashDistNote').value.trim()||null});if(error)return toast('Ошибка: '+error.message);closeModal();const r=Array.isArray(data)?data[0]:data;toast(`Начислено по ${fmt(r?.amount_per_player||0)} CS`);await loadData()}
+async function markGuildCashIssued(id){const {error}=await db.rpc('mark_guild_cash_issued',{p_allocation_id:id});if(error)return toast('Ошибка: '+error.message);toast('Cash Shop отмечен как выданный');await loadData()}
 function renderDailyReward(){
  const box=document.getElementById('dailyRewardBox');if(!box)return;
  const me=players.find(p=>p.id===Number(currentProfile?.player_id));
@@ -829,7 +855,7 @@ async function markDailyCashIssued(id){
 }
 
 async function loadData(){
- const [pr,tx,ev,ep,lt,li,lr,dr,au,ab,rg,re,rr,mrg,mre,mrr]=await Promise.all([
+ const [pr,tx,ev,ep,lt,li,lr,dr,gct,gcd,gca,au,ab,rg,re,rr,mrg,mre,mrr]=await Promise.all([
   db.from("players").select("id,nickname,character_name,race,class,status,created_at"),
   db.from("dkp_transactions").select("id,player_id,amount,reason,created_at,loot_id").order("created_at",{ascending:false}),
   db.from("events").select("id,name,description,event_date,default_dkp,status,created_at").order("event_date",{ascending:false}),
@@ -838,6 +864,9 @@ async function loadData(){
   db.from("loot_items").select("id,name,category,item_type,grade,enhancement,race,item_level,default_cost,notes,created_at").order("name",{ascending:true}),
   db.from("loot_requests").select("id,player_id,item_id,requested_cost,status,player_note,created_at,resolved_at,resolution_note,loot_id").order("created_at",{ascending:false}),
   db.from("daily_reward_claims").select("id,player_id,claim_date,day_no,reward_type,dkp_amount,cash_shop_amount,cash_status,created_at,cash_issued_at").order("created_at",{ascending:false}),
+  db.from("guild_cash_transactions").select("id,amount,kind,source,item_name,note,distribution_id,created_at").order("created_at",{ascending:false}),
+  db.from("guild_cash_distributions").select("id,amount_per_player,total_amount,player_count,note,created_at").order("created_at",{ascending:false}),
+  db.from("guild_cash_distribution_players").select("id,distribution_id,player_id,amount,status,issued_at"),
   db.from("auctions").select("id,item_id,start_cost,step_percent,step_amount,bid_interval_seconds,expires_at,status,winner_id,winning_bid,loot_id,created_at,closed_at,cancelled_at,cancel_reason,roulette_used,roulette_started_at,roulette_participants").order("created_at",{ascending:false}),
   db.from("auction_bids").select("id,auction_id,player_id,amount,is_all_in,created_at").order("created_at",{ascending:false}),
   db.from("roulette_games").select("id,title,mode,max_players,entry_cost,spin_seconds,status,winner_id,created_at,started_at,completed_at,cancelled_at").order("created_at",{ascending:false}),
@@ -847,13 +876,13 @@ async function loadData(){
   db.from("manual_roulette_entries").select("id,roulette_id,display_name,sort_order,is_active,eliminated_at"),
   db.from("manual_roulette_rounds").select("id,roulette_id,round_no,selected_entry_id,active_entry_ids,result_type,created_at").order("round_no",{ascending:true})
  ]);
- const err=[pr,tx,ev,ep,lt,li,lr,dr,au,ab,rg,re,rr,mrg,mre,mrr].find(x=>x.error)?.error;if(err) throw err;
+ const err=[pr,tx,ev,ep,lt,li,lr,dr,gct,gcd,gca,au,ab,rg,re,rr,mrg,mre,mrr].find(x=>x.error)?.error;if(err) throw err;
  const txs=tx.data||[], parts=ep.data||[], rawPlayers=pr.data||[];
  const balances={};txs.forEach(t=>balances[t.player_id]=(balances[t.player_id]||0)+Number(t.amount||0));
  const lootWins={};(lt.data||[]).forEach(x=>{if(x.winner_id&&x.status==="awarded")lootWins[x.winner_id]=(lootWins[x.winner_id]||0)+1});
  players=rawPlayers.map(p=>({id:p.id,name:p.nickname||p.character_name||`#${p.id}`,character_name:p.character_name,race:p.race,playerClass:p.class,dkp:balances[p.id]||0,loot:lootWins[p.id]||0,status:p.status}));
  events=(ev.data||[]).map(e=>{const ps=parts.filter(x=>x.event_id===e.id);const participants=ps.map(x=>({name:players.find(p=>p.id===x.player_id)?.name||`#${x.player_id}`,dkp:Number(x.dkp_amount||0),player_id:x.player_id}));return{id:e.id,name:e.name,type:e.description||"event",start:fmtDate(e.event_date),end:"",status:e.status==="completed"?"Принято":e.status==="cancelled"?"Отменено":"Ожидает решения",count:ps.length,dkp:e.default_dkp||0,people:participants.map(x=>x.name),participants}});
- lootItems=li.data||[];dailyRewardClaims=dr.data||[];lootRequests=(lr.data||[]).map(x=>({...x,id:Number(x.id),player_id:Number(x.player_id),item_id:Number(x.item_id),requested_cost:Number(x.requested_cost)}));
+ lootItems=li.data||[];dailyRewardClaims=dr.data||[];guildCashTransactions=gct.data||[];guildCashDistributions=gcd.data||[];guildCashAllocations=gca.data||[];lootRequests=(lr.data||[]).map(x=>({...x,id:Number(x.id),player_id:Number(x.player_id),item_id:Number(x.item_id),requested_cost:Number(x.requested_cost)}));
  auctions=au.data||[];auctionBids=ab.data||[];rouletteGames=rg.data||[];rouletteEntries=(re.data||[]).map(x=>({...x,player_id:Number(x.player_id),roulette_id:Number(x.roulette_id)}));rouletteRounds=rr.data||[];manualRouletteGames=mrg.data||[];manualRouletteEntries=(mre.data||[]).map(x=>({...x,id:Number(x.id),roulette_id:Number(x.roulette_id)}));manualRouletteRounds=mrr.data||[];
  loot=(lt.data||[]).map(x=>({id:x.id,item:x.name,rarity:"",source:x.description||"—",date:fmtDate(x.awarded_at||x.created_at),raw_date:x.awarded_at||x.created_at,winner_id:x.winner_id?Number(x.winner_id):null,winner:players.find(p=>p.id===x.winner_id)?.name||"—",price:x.cost||0,status:x.status==="awarded"?"Выдан":x.status==="cancelled"?"Отменено":"Ожидает",item_id:x.item_id,cancelled_at:fmtDate(x.cancelled_at),cancel_reason:x.cancel_reason}));
  history=txs.map(t=>[fmtDate(t.created_at),players.find(p=>p.id===t.player_id)?.name||`#${t.player_id}`,t.reason,(Number(t.amount)>=0?"+":"")+Number(t.amount)]);
@@ -863,7 +892,7 @@ async function loadData(){
  document.getElementById("attendanceValue").textContent=events.length?"—":"—";
  const me=players.find(p=>p.id===currentProfile?.player_id);document.getElementById("myDkp").textContent=me?fmt(me.dkp):"0";
  const sorted=[...players].sort((a,b)=>b.dkp-a.dkp),pos=me?sorted.findIndex(p=>p.id===me.id)+1:0;document.getElementById("myRank").textContent=pos?`#${pos} в рейтинге`:"профиль не связан с игроком";
- renderDashboard();renderDailyReward();renderEvents();renderPlayers();renderLoot();renderAuctions();renderRoulette();renderHistory();
+ renderDashboard();renderDailyReward();renderGuildTreasury();renderEvents();renderPlayers();renderLoot();renderAuctions();renderRoulette();renderHistory();
  maybeShowLatestRoulette();
 }
 function fmtDate(v){if(!v)return"—";const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
