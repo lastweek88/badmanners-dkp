@@ -169,6 +169,30 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 
 /* v8.6.2 — Guild Cash Shop Treasury */
 .treasury-card{margin:0 0 24px;padding:18px}.treasury-top{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:10px;margin:12px 0}.treasury-main,.treasury-stat{border:1px solid #30343a;background:#080808;padding:14px}.treasury-main .value{font-size:30px;font-weight:900;color:#f2c14e}.treasury-stat .value{font-size:20px;font-weight:900;margin-top:6px}.treasury-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.treasury-history{margin-top:12px;border:1px solid #292929}.treasury-row{display:grid;grid-template-columns:minmax(180px,1fr) 130px 150px;gap:12px;padding:10px 12px;border-top:1px solid #202020;align-items:center}.treasury-row:first-child{border-top:0}.treasury-amount{text-align:right;font-weight:900}.treasury-date{text-align:right;color:#777;font-size:10px}.treasury-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:300px;overflow:auto;border:1px solid #292929;padding:10px}.treasury-check{display:flex;align-items:center;gap:8px;border:1px solid #222;padding:8px}.treasury-preview{margin:12px 0;border:1px solid #333;padding:12px}.treasury-pending{margin-top:12px;border-top:1px solid #333;padding-top:12px}@media(max-width:800px){.treasury-top{grid-template-columns:repeat(2,1fr)}.treasury-row{grid-template-columns:1fr auto}.treasury-date{grid-column:1/-1;text-align:left}.treasury-checks{grid-template-columns:1fr}}
+
+/* v8.7 compact daily + emblem */
+.guild-emblem{width:34px;height:34px;object-fit:contain;vertical-align:middle;margin-right:9px;image-rendering:auto;flex-shrink:0}
+.brand .guild-emblem{display:block;width:40px;height:40px;margin:0 0 8px}
+.top-emblem{width:30px;height:30px;margin-right:7px}
+.daily-card{width:min(100%,340px);margin:12px 0 18px;padding:12px 14px;box-sizing:border-box}
+.daily-card .section-head{margin-bottom:5px}.daily-card h2{font-size:13px!important}
+.daily-card .daily-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:8px 0}
+.daily-card .daily-day{min-height:42px;padding:5px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:5px}
+.daily-card .daily-day b{font-size:11px;margin:0 0 4px}.daily-card .daily-day span{font-size:9px;white-space:nowrap}
+.daily-card .daily-day.done{background:#12251a;border-color:#388052}.daily-card .daily-day.current{border-color:#a0ff00;box-shadow:inset 0 0 0 1px #a0ff0040}
+.daily-card .daily-day.final-day{border-color:#736225}
+.daily-card .daily-actions{display:block}.daily-card .daily-actions>div{font-size:11px}.daily-card .daily-actions .sub{font-size:10px;margin-top:5px}
+.daily-card .daily-actions button{width:100%;margin-top:9px;padding:8px;font-size:10px}
+.daily-card .cash-pending{width:min(600px,calc(100vw - 40px));max-width:100%;box-sizing:border-box}
+@media(max-width:700px){.daily-card .daily-days{grid-template-columns:repeat(7,minmax(0,1fr))}.daily-card .daily-day{min-height:40px}.daily-card{width:min(100%,340px)}}
+
+/* v8.7.2 — sector sizes reflect the 95/5 server-side odds; no percentages shown */
+.daily-wheel-two{background:conic-gradient(from 0deg,#a0ff00 0deg 18deg,#512577 18deg 360deg)}
+.daily-wheel-two::after{content:none}
+.daily-wheel-two .daily-half-label{position:absolute;z-index:2;font-weight:900;text-shadow:0 2px 6px #000;line-height:1.2}
+.daily-wheel-two .daily-half-dkp{left:18%;top:57%;width:64%;height:auto;transform:none;text-align:center;font-size:23px}
+.daily-wheel-two .daily-half-cash{left:57%;top:6%;width:30%;height:auto;transform:none;text-align:center;font-size:10px;color:#0a1600;text-shadow:none}
+.daily-wheel-legend{text-align:center;margin-top:8px;color:#bdbdbd;font-size:12px}
 </style>
 </head>
 <body>
@@ -187,7 +211,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 
 <div class="app">
   <aside class="sidebar">
-    <div class="brand"><b>BadManners</b><span>DKP MANAGER • CLAN SYSTEM</span></div>
+    <div class="brand"><img class="guild-emblem" src="badmanners-emblem.png" alt="Эмблема BadManners"><b>BadManners</b><span>DKP MANAGER • CLAN SYSTEM</span></div>
     <nav class="nav">
       <small>Основное</small>
       <button class="active" data-page="dashboard">◈ &nbsp; Главная</button>
@@ -207,7 +231,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
   </aside>
 
   <main class="main">
-    <header class="topbar"><div class="top-brand"><span class="bm-mark">BM</span><span class="bm-logo">BadManners</span><span class="bm-clan">CLAN</span><span class="bm-sep">/</span><div class="top-title" id="topTitle">Главная</div></div><div class="server"><span class="dot"></span> <span id="serverStatus">Supabase подключён</span></div></header>
+    <header class="topbar"><div class="top-brand"><img class="guild-emblem top-emblem" src="badmanners-emblem.png" alt="BadManners"><span class="bm-logo">BadManners</span><span class="bm-clan">CLAN</span><span class="bm-sep">/</span><div class="top-title" id="topTitle">Главная</div></div><div class="server"><span class="dot"></span> <span id="serverStatus">Supabase подключён</span></div></header>
     <div class="content">
 
       <section class="page active" id="dashboard">
@@ -218,7 +242,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
           <div class="card stat"><div class="label">Активные игроки</div><div class="value" id="activePlayers">0</div><div class="sub" id="totalPlayers">из 0 участников</div></div>
           <div class="card stat"><div class="label">Лут всего</div><div class="value yellow" id="lootCount">0</div><div class="sub">выданных предметов</div></div>
         </div>
-        <div class="card daily-card" id="dailyRewardCard"><div class="section-head"><div><h2>Ежедневная награда</h2></div></div><div id="dailyRewardBox"><div class="empty">Загрузка...</div></div></div>
+        <div class="card daily-card" id="dailyRewardCard"><div class="section-head"><div><h2>Награда за вход</h2></div></div><div id="dailyRewardBox"><div class="empty">Загрузка...</div></div></div>
         <div class="card treasury-card" id="guildTreasuryCard"><div class="section-head"><div><h2>Бюджет гильдии — Cash Shop</h2><div class="sub">Общая касса от продажи гильдейского лута.</div></div></div><div id="guildTreasuryBox"><div class="empty">Загрузка...</div></div></div>
         <div class="grid two">
           <div>
@@ -820,13 +844,13 @@ function renderDailyReward(){
  if(!me){box.innerHTML='<div class="empty">Аккаунт не связан с игроком.</div>';return}
  const mine=dailyRewardClaims.filter(x=>Number(x.player_id)===Number(me.id)).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
  const today=kyivDateKey(),claimedToday=mine.some(x=>x.claim_date===today),nextDay=(mine.length%7)+1;
- const completedInCycle=mine.length%7;
- const days=Array.from({length:7},(_,i)=>{const d=i+1,done=d<=completedInCycle,current=!claimedToday&&d===nextDay;return `<div class="daily-day ${done?'done':''} ${current?'current':''} ${d===7?'jackpot':''}"><b>ДЕНЬ ${d}</b><span>${d<7?'+5 DKP':'🎰 JACKPOT'}</span>${done?'<div class="positive">✓</div>':''}</div>`}).join('');
+ const completedInCycle=claimedToday&&mine.length%7===0?7:mine.length%7;
+ const days=Array.from({length:7},(_,i)=>{const d=i+1,done=d<=completedInCycle,current=!claimedToday&&d===nextDay;return `<div class="daily-day ${done?'done':''} ${current?'current':''} ${d===7?'final-day':''}"><b>${d}</b><span>${d<7?'+5':'+50'}</span>${done?'<div class="positive">✓</div>':''}</div>`}).join('');
  const last=mine[mine.length-1];
- const status=claimedToday?`Сегодня уже получено: <b>${last?.reward_type==='cash_shop'?'5000 CASH SHOP':'+'+fmt(last?.dkp_amount||0)+' DKP'}</b>`:nextDay===7?'Сегодня доступна <b class="yellow">РУЛЕТКА</b>':`Сегодня: <b class="positive">+5 DKP</b>`;
+ const status=claimedToday?`Сегодня уже получено: <b>${last?.reward_type==='cash_shop'?'14 000 CASH SHOP':'+'+fmt(last?.dkp_amount||0)+' DKP'}</b>`:nextDay===7?'Сегодня: <b class="yellow">50 DKP / Cash Shop</b>':`Сегодня: <b class="positive">+5 DKP</b>`;
  const pending=dailyRewardClaims.filter(x=>x.reward_type==='cash_shop'&&x.cash_status==='pending');
- const adminPending=canManagePlayers()&&pending.length?`<div class="cash-pending"><b class="yellow">CASH SHOP ожидает выдачи: ${pending.length}</b>${pending.map(x=>`<div class="participant"><span>${esc(players.find(p=>p.id===Number(x.player_id))?.name||'#'+x.player_id)} • 5000 Cash Shop • ${fmtDate(x.created_at)}</span><button class="btn" onclick="markDailyCashIssued(${x.id})">ВЫДАНО</button></div>`).join('')}</div>`:'';
- box.innerHTML=`<div class="daily-days">${days}</div><div class="daily-actions"><div><div>${status}</div><div class="sub">Прогресс не сбрасывается, если пропустить день. Новый день считается по Europe/Kyiv.</div></div><button class="btn primary" ${claimedToday||dailyRewardBusy?'disabled':''} onclick="claimDailyReward()">${claimedToday?'ПОЛУЧЕНО':nextDay===7?'КРУТИТЬ РУЛЕТКУ':'ЗАБРАТЬ +5 DKP'}</button></div>${adminPending}`;
+ const adminPending=canManagePlayers()&&pending.length?`<div class="cash-pending"><b class="yellow">CASH SHOP ожидает выдачи: ${pending.length}</b>${pending.map(x=>`<div class="participant"><span>${esc(players.find(p=>p.id===Number(x.player_id))?.name||'#'+x.player_id)} • 14 000 Cash Shop • ${fmtDate(x.created_at)}</span><button class="btn" onclick="markDailyCashIssued(${x.id})">ВЫДАНО</button></div>`).join('')}</div>`:'';
+ box.innerHTML=`<div class="daily-days">${days}</div><div class="daily-actions"><div><div>${status}</div><div class="sub">7-й день: 50 DKP или 14 000 Cash Shop.</div></div><button class="btn primary" ${claimedToday||dailyRewardBusy?'disabled':''} onclick="claimDailyReward()">${claimedToday?'ПОЛУЧЕНО':nextDay===7?'ПОЛУЧИТЬ НАГРАДУ':'ЗАБРАТЬ +5 DKP'}</button></div>${adminPending}`;
 }
 async function claimDailyReward(){
  if(dailyRewardBusy)return;dailyRewardBusy=true;renderDailyReward();
@@ -839,20 +863,19 @@ async function claimDailyReward(){
  dailyRewardBusy=false;renderDailyReward();
 }
 function dailyWheelHtml(){
- const colors=['#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#10b981','#14b8a6','#06b6d4','#0ea5e9','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e','#fb7185','#64748b','#f5c542'];
- const step=18;let stops=[];for(let i=0;i<20;i++)stops.push(`${colors[i]} ${i*step}deg ${(i+1)*step}deg`);let pieces='';
- for(let i=0;i<20;i++){const center=i*step+step/2;pieces+=`<div class="daily-wheel-divider" style="transform:rotate(${i*step}deg)"></div><div class="daily-wheel-label" style="transform:rotate(${center}deg) translateX(30px)"><span>${i===19?'5000 CASH':'+50 DKP'}</span></div>`}
- return `<div class="roulette-stage"><div class="daily-pointer">▼</div><div class="daily-wheel" id="dailyWheel" style="background:conic-gradient(from 0deg,${stops.join(',')})">${pieces}<div class="daily-center">DAY 7</div></div><div class="daily-result" id="dailyResult">КРУТИМ...</div></div>`;
+ return `<div class="roulette-stage"><div class="daily-pointer">▼</div><div class="daily-wheel daily-wheel-two" id="dailyWheel"><div class="daily-half-label daily-half-dkp">+50 DKP</div><div class="daily-half-label daily-half-cash">14K</div><div class="daily-center">DAY 7</div></div><div class="daily-wheel-legend">+50 DKP · 14 000 Cash Shop</div><div class="daily-result" id="dailyResult">КРУТИМ...</div></div>`;
 }
 function showDailyRoulette(r){
- showModal('DAY 7 — РУЛЕТКА','95% — +50 DKP • 5% — 5000 Cash Shop',dailyWheelHtml());
+ showModal('ДЕНЬ 7 — НАГРАДА','50 DKP или 14 000 Cash Shop',dailyWheelHtml());
  const wheel=document.getElementById('dailyWheel'),result=document.getElementById('dailyResult'),isCash=r.reward_type==='cash_shop';
- const sector=isCash?19:Math.floor(Math.random()*19),step=18,target=sector*step+step/2,align=((270-target)%360+360)%360,finalDeg=360*8+align;
+ // Result is already determined by Supabase. This animation only displays it.
+ // Pointer is at the top. Cash wedge center = 9deg, DKP center = 189deg.
+ const finalDeg=360*8+(isCash?351:171);
  wheel.style.setProperty('--daily-spin','8s');requestAnimationFrame(()=>requestAnimationFrame(()=>{wheel.classList.add('spinning');wheel.style.transform=`rotate(${finalDeg}deg)`}));
- setTimeout(()=>{if(result)result.innerHTML=isCash?'🏆 <span class="yellow">JACKPOT — 5000 CASH SHOP</span>':'🎁 <span class="positive">+50 DKP</span>';},8150);
+ setTimeout(()=>{if(result)result.innerHTML=isCash?'🏆 <span class="yellow">14 000 CASH SHOP</span>':'🎁 <span class="positive">+50 DKP</span>';},8150);
 }
 async function markDailyCashIssued(id){
- if(!canManagePlayers())return toast('Недостаточно прав');if(!confirm('Отметить 5000 Cash Shop как выданные игроку?'))return;
+ if(!canManagePlayers())return toast('Недостаточно прав');if(!confirm('Отметить 14 000 Cash Shop как выданные игроку?'))return;
  const {error}=await db.rpc('mark_daily_cash_issued',{p_claim_id:id});if(error)return toast('Ошибка: '+error.message);toast('Cash Shop отмечен как выданный');await loadData();
 }
 
