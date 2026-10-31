@@ -541,6 +541,33 @@ function setupRealtime(){
   .on('postgres_changes',{event:'*',schema:'public',table:'manual_roulette_rounds'},queueRealtimeReload)
   .subscribe(status=>{if(status==='SUBSCRIBED')console.log('BadManners LIVE connected')});
 }
+// v8.7.8: independent 3-second fallback for live auction updates.
+// Reads only auction tables; never reloads the page or changes balances.
+let auctionPollBusy=false;
+let auctionPollStarted=false;
+async function refreshAuctionLive(){
+ if(auctionPollBusy || !currentUser || document.hidden || !document.getElementById('auctions')?.classList.contains('active'))return;
+ auctionPollBusy=true;
+ try{
+  const [a,b]=await Promise.all([
+   db.from('auctions').select('id,item_id,start_cost,step_percent,step_amount,bid_interval_seconds,expires_at,status,winner_id,winning_bid,loot_id,created_at,closed_at,cancelled_at,cancel_reason,roulette_used,roulette_started_at,roulette_participants').order('created_at',{ascending:false}),
+   db.from('auction_bids').select('id,auction_id,player_id,amount,is_all_in,created_at').order('created_at',{ascending:false})
+  ]);
+  if(a.error || b.error)throw a.error||b.error;
+  const nextAuctions=a.data||[], nextBids=b.data||[];
+  const signature=x=>JSON.stringify(x);
+  if(signature(nextAuctions)!==signature(auctions) || signature(nextBids)!==signature(auctionBids)){
+   auctions=nextAuctions;auctionBids=nextBids;renderAuctions();
+  }
+ }catch(err){console.warn('BadManners auction refresh:',err)}
+ finally{auctionPollBusy=false}
+}
+function startAuctionPolling(){
+ if(auctionPollStarted)return;
+ auctionPollStarted=true;
+ setInterval(refreshAuctionLive,3000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAuctionLive()});
+}
 function queueRealtimeReload(){
  clearTimeout(realtimeReloadTimer);
  realtimeReloadTimer=setTimeout(async()=>{try{await loadData()}catch(e){console.warn('Realtime refresh:',e)}},120);
@@ -960,7 +987,7 @@ async function openSession(session){
  if(error||!data){await db.auth.signOut();document.getElementById("authError").textContent="Для пользователя не найден профиль в таблице profiles.";return}
  currentProfile=data;document.getElementById("userName").textContent=data.nickname||currentUser.email;document.getElementById("userAvatar").textContent=initials(data.nickname||"BM");document.getElementById("userRole").textContent=(data.role||"player").toUpperCase();document.querySelectorAll(".staff-only").forEach(el=>el.style.display=["admin","officer"].includes(data.role)?"":"none");document.getElementById("authScreen").classList.add("hidden");
  const hashPage=(location.hash||"").replace("#","");const saved=(hashPage&&document.getElementById(hashPage))?hashPage:localStorage.getItem("bm_active_page");if(saved&&document.getElementById(saved))go(saved);
- try{await refreshAccountLinks();await loadData();setupRealtime()}catch(e){toast("Ошибка загрузки: "+e.message)}
+ try{await refreshAccountLinks();await loadData();setupRealtime();startAuctionPolling()}catch(e){toast("Ошибка загрузки: "+e.message)}
 }
 async function logout(){if(realtimeChannel)await db.removeChannel(realtimeChannel);await db.auth.signOut();location.reload()}
 document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();const btn=document.getElementById("loginBtn"),err=document.getElementById("authError");btn.disabled=true;btn.textContent="Вход...";err.textContent="";const {data,error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});btn.disabled=false;btn.textContent="Войти";if(error){err.textContent="Не удалось войти: "+error.message;return}await openSession(data.session)});
