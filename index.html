@@ -223,6 +223,7 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
       <small>Аналитика</small>
       <button data-page="history">↻ &nbsp; История DKP</button>
       <button data-page="ranking">♛ &nbsp; Рейтинг</button>
+      <button data-page="dkpguide">✦ &nbsp; Как получать DKP</button>
     </nav>
     <div class="userbox">
       <div class="userrow"><div class="avatar" id="userAvatar">--</div><div><div class="name" id="userName">—</div><div class="role" id="userRole">—</div></div></div>
@@ -301,6 +302,28 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
         <div class="card table-wrap"><table class="table"><thead><tr><th>Дата</th><th>Игрок</th><th>Причина</th><th>Изменение</th></tr></thead><tbody id="historyTable"></tbody></table></div>
       </section>
 
+
+      <section class="page" id="dkpguide">
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div>
+        <h1>Как получать DKP</h1>
+        <div class="subtitle">Активности гильдии и награды за участие. Все суммы указаны в DKP.</div>
+        <div class="card table-wrap" style="margin-top:22px">
+          <table class="table"><thead><tr><th>Активность</th><th>Условия</th><th>Награда</th></tr></thead>
+          <tbody>
+            <tr><td><b>Ежедневный вход</b></td><td>Вход в систему каждый день</td><td style="color:#a0ff00;font-weight:800;white-space:nowrap">+5 DKP</td></tr>
+            <tr><td><b>Питбоссы — заставы</b></td><td>Убийство ПБ на заставах</td><td style="color:#a0ff00;font-weight:800;white-space:nowrap">+30 DKP</td></tr>
+            <tr><td><b>Питбоссы — ГШ</b></td><td>Убийство ГШ ПБ</td><td style="color:#a0ff00;font-weight:800;white-space:nowrap">+15 DKP</td></tr>
+            <tr><td><b>Файт за ПБ</b></td><td>Участие в проигранном файте за ПБ</td><td style="color:#a0ff00;font-weight:800;white-space:nowrap">+10 DKP</td></tr>
+            <tr><td><b>Ежедневный гильдейский квест</b></td><td>Берётся возле клерка у основного куратора; уровень 45+</td><td style="color:#a0ff00;font-weight:800;white-space:nowrap">+10 DKP</td></tr>
+            <tr><td><b>Ресурсы для турелей</b></td><td>Передача ресурсов специалисту на ПБ: 3 DKP за ресурс, максимум 5 ресурсов в день</td><td style="color:#a0ff00;font-weight:800;white-space:nowrap">До +15 DKP/день</td></tr>
+          </tbody></table>
+        </div>
+        <div class="card" style="margin-top:18px;padding:20px;border-left:3px solid #a0ff00">
+          <b style="color:#a0ff00">Лимит ресурсов</b>
+          <div class="subtitle" style="margin-top:8px">1 ресурс = 3 DKP · 5 ресурсов = 15 DKP. За дополнительные ресурсы в тот же день DKP не начисляются.</div>
+        </div>
+      </section>
+
       <section class="page" id="ranking">
         <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Рейтинг</h1><div class="subtitle">Текущий баланс DKP участников клана.</div>
         <div class="card rank" id="fullRank"></div>
@@ -354,7 +377,7 @@ function go(page){
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
  document.getElementById(page).classList.add("active");
  document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
- const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",auctions:"Аукционы",roulette:"Рулетка",history:"История DKP",ranking:"Рейтинг"};
+ const titles={dashboard:"Главная",events:"События",players:"Игроки",loot:"Лут",auctions:"Аукционы",roulette:"Рулетка",history:"История DKP",ranking:"Рейтинг",dkpguide:"Как получать DKP"};
  document.getElementById("topTitle").textContent=titles[page];
  window.scrollTo({top:0,behavior:"smooth"});
 }
