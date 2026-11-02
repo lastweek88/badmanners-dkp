@@ -193,6 +193,9 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 .daily-wheel-two .daily-half-dkp{left:18%;top:57%;width:64%;height:auto;transform:none;text-align:center;font-size:23px}
 .daily-wheel-two .daily-half-cash{left:57%;top:6%;width:30%;height:auto;transform:none;text-align:center;font-size:10px;color:#0a1600;text-shadow:none}
 .daily-wheel-legend{text-align:center;margin-top:8px;color:#bdbdbd;font-size:12px}
+
+/* BadManners Loot Workspace */
+.loot-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}.loot-summary>div{background:#0d131b;border:1px solid #26323e;padding:15px 17px;display:flex;flex-direction:column;gap:8px}.loot-summary small{font-size:10px;color:#93a5b4;letter-spacing:.11em}.loot-summary strong{font-size:25px;color:#f0f4f6}.loot-summary>div:nth-child(2) strong{color:#d7ae54}.loot-tabs{display:flex;gap:5px;border-bottom:1px solid #34404c;margin:20px 0}.loot-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;color:#a4b1bd;padding:13px 19px;font-size:12px;font-weight:700;letter-spacing:.04em}.loot-tabs button.active{border-bottom-color:#a0ff21;color:#f5f8fa;background:#141b20}.loot-tabs button:hover{color:#fff;background:#171b20}.loot-tabs span{background:#302817;color:#edc66a;padding:2px 6px;margin-left:4px}.loot-pane[hidden]{display:none!important}.loot-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:17px 0}.loot-head h2{margin:0 0 5px;font-size:15px;color:#e9f0f4}.loot-head p{margin:0;color:#8997a3;font-size:11px}.loot-filters{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.loot-filters .input{flex:1 1 260px}.loot-filters .select{flex:0 1 180px}.loot-table td{vertical-align:middle}.loot-item-name{font-size:12px;color:#f4f5f6;font-weight:700}.loot-item-meta{font-size:10px;color:#a0afbb;margin-top:5px;line-height:1.6}.loot-stock{font-size:12px;font-weight:700;color:#d8e4ed}.loot-stock-bar{height:4px;width:90px;max-width:100%;background:#28333a;margin-top:6px}.loot-stock-bar>i{display:block;height:100%;background:#a0ff21}.loot-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:13px 0;color:#a1aeb8;font-size:11px}.loot-pager .actions{align-items:center}.loot-pager button:disabled{opacity:.35;cursor:default}.loot-hidden{display:none}@media(max-width:700px){.loot-summary{gap:6px}.loot-summary>div{padding:9px}.loot-summary strong{font-size:20px}.loot-summary small{font-size:8px}.loot-tabs button{padding:11px 8px;font-size:10px}.loot-head{align-items:flex-start;flex-direction:column}.loot-filters .select{flex:1 1 140px}}
 </style>
 </head>
 <body>
@@ -270,14 +273,16 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
       </section>
 
       <section class="page" id="loot">
-        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Лут</h1><div class="subtitle">Список предметов и история выдачи с автоматическим списанием DKP.</div>
-        <div class="toolbar"><div class="filters"><input class="input" id="lootSearch" placeholder="Поиск по истории..." oninput="renderLoot()"></div><div class="actions"><button class="btn staff-only" onclick="newLootItem()">+ Добавить предмет</button><button class="btn primary staff-only" onclick="newLoot()">Выдать лут</button></div></div>
-        <div class="section-head"><h2>Заявки на получение <span class="badge pending" id="lootRequestCount">0</span></h2><span class="sub">Игрок нажимает «Хочу забрать» — заявка сохраняется и Admin получает Telegram-уведомление.</span></div>
-        <div class="card table-wrap"><table class="table"><thead><tr><th>Дата</th><th>Игрок</th><th>Предмет</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootRequestsTable"></tbody></table></div>
-        <div class="section-head"><h2>История выдачи</h2></div>
-        <div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Категория / параметры</th><th>Дата</th><th>Получатель</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootTable"></tbody></table></div>
-        <div class="section-head" style="margin-top:22px"><h2>Список предметов</h2><span class="sub" id="catalogCount"></span></div>
-        <div class="card table-wrap"><table class="table"><thead><tr><th>Название</th><th>Категория</th><th>Тип</th><th>Грейд</th><th>Заточка</th><th>Раса</th><th>Уровень</th><th>Базовая цена</th><th></th></tr></thead><tbody id="catalogTable"></tbody></table></div>
+        <div class="page-kicker">BADMANNERS / CLAN CONTROL</div><h1>Лут</h1><div class="subtitle">Склад, заявки и история — отдельно. Все данные из Supabase.</div>
+        <div class="loot-summary"><div><small>ДОСТУПНЫЕ ПОЗИЦИИ</small><strong id="lootSummaryStock">0</strong></div><div><small>ОЖИДАЮТ РЕШЕНИЯ</small><strong id="lootSummaryPending">0</strong></div><div><small>ВЫДАНО ПРЕДМЕТОВ</small><strong id="lootSummaryIssued">0</strong></div></div>
+        <div class="loot-tabs" role="tablist" aria-label="Разделы лута"><button type="button" class="active" data-loot-tab="stock" onclick="setLootTab('stock')">◈ Склад</button><button type="button" data-loot-tab="requests" onclick="setLootTab('requests')">◷ Заявки <span id="lootTabPending">0</span></button><button type="button" data-loot-tab="history" onclick="setLootTab('history')">▤ История выдачи</button></div>
+        <div id="lootStockPane" class="loot-pane">
+          <div class="loot-head"><div><h2>Доступный лут</h2><p>Только предметы с остатком на складе</p></div><div class="actions"><button class="btn staff-only" onclick="newLootItem()">+ Добавить предмет</button><button class="btn primary staff-only" onclick="newLoot()">Выдать лут</button></div></div>
+          <div class="loot-filters"><input class="input" id="lootStockSearch" placeholder="Поиск по названию или характеристикам..." oninput="lootStockPage=1;renderLoot()"><select class="select" id="lootCategory" onchange="lootStockPage=1;renderLoot()"><option value="">Все категории</option><option value="weapon">Оружие</option><option value="armor">Броня</option><option value="accessory">Аксессуары</option><option value="other">Прочее</option></select><select class="select" id="lootRace" onchange="lootStockPage=1;renderLoot()"><option value="">Все расы</option><option value="Cora">Кора</option><option value="Bellato">Беллато</option><option value="Accretia">Аккретия</option><option value="All">Все расы (All)</option></select></div>
+          <div class="card table-wrap"><table class="table loot-table"><thead><tr><th>Предмет / характеристики</th><th>Категория</th><th>Цена за шт.</th><th>Остаток</th><th>Действия</th></tr></thead><tbody id="catalogTable"></tbody></table></div><div class="loot-pager" id="lootStockPager"></div><span id="catalogCount" class="loot-hidden"></span>
+        </div>
+        <div id="lootRequestsPane" class="loot-pane" hidden><div class="loot-head"><div><h2>Заявки на получение <span class="badge pending" id="lootRequestCount">0</span></h2><p>Ожидающие заявки показываются первыми</p></div></div><div class="card table-wrap"><table class="table"><thead><tr><th>Дата</th><th>Игрок</th><th>Предмет</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootRequestsTable"></tbody></table></div><div class="loot-pager" id="lootRequestsPager"></div></div>
+        <div id="lootHistoryPane" class="loot-pane" hidden><div class="loot-head"><div><h2>История выдачи</h2><p>Все выданные и отменённые предметы сохраняются здесь</p></div></div><div class="loot-filters"><input class="input" id="lootSearch" placeholder="Поиск по предмету или игроку..." oninput="lootHistoryPage=1;renderLoot()"><select class="select" id="lootHistoryStatus" onchange="lootHistoryPage=1;renderLoot()"><option value="">Все статусы</option><option value="Выдан">Выдан</option><option value="Отменено">Отменено</option><option value="Ожидает">Ожидает</option></select></div><div class="card table-wrap"><table class="table"><thead><tr><th>Предмет</th><th>Категория / параметры</th><th>Дата</th><th>Получатель</th><th>Цена</th><th>Статус</th><th></th></tr></thead><tbody id="lootTable"></tbody></table></div><div class="loot-pager" id="lootHistoryPager"></div></div>
       </section>
 
       <section class="page" id="auctions">
@@ -415,23 +420,57 @@ function renderPlayers(){
 function stockIssued(item){return loot.filter(l=>Number(l.item_id)===Number(item.id)&&l.status==="Выдан").length}
 function stockRemaining(item){return Math.max(0,Number(item.stock_total||1)-stockIssued(item))}
 function availableLootItems(){return lootItems.filter(x=>stockRemaining(x)>0)}
+let lootActiveTab="stock",lootStockPage=1,lootHistoryPage=1,lootRequestsPage=1;
+const LOOT_PAGE_SIZE=15;
+function setLootTab(tab){
+ if(!["stock","requests","history"].includes(tab))return;
+ lootActiveTab=tab;
+ ["stock","requests","history"].forEach(t=>{
+   const pane=document.getElementById("loot"+t[0].toUpperCase()+t.slice(1)+"Pane");if(pane)pane.hidden=t!==tab;
+   const btn=document.querySelector(`[data-loot-tab="${t}"]`);if(btn){btn.classList.toggle("active",t===tab);btn.setAttribute("aria-selected",String(t===tab));}
+ });
+}
+function lootPager(id,page,total,which){
+ const el=document.getElementById(id);if(!el)return;
+ const pages=Math.max(1,Math.ceil(total/LOOT_PAGE_SIZE));page=Math.max(1,Math.min(page,pages));
+ el.innerHTML=`<span>Найдено: ${total} · По ${LOOT_PAGE_SIZE} на странице</span><div class="actions"><button class="btn" ${page<=1?'disabled':''} onclick="changeLootPage('${which}',-1)">← Назад</button><span>${page} / ${pages}</span><button class="btn" ${page>=pages?'disabled':''} onclick="changeLootPage('${which}',1)">Вперёд →</button></div>`;
+}
+function changeLootPage(which,delta){
+ if(which==='stock')lootStockPage+=delta;
+ else if(which==='history')lootHistoryPage+=delta;
+ else lootRequestsPage+=delta;
+ renderLoot();
+}
 function renderLoot(){
- const q=(document.getElementById("lootSearch").value||"").toLowerCase();
- const rows=loot.filter(x=>(x.item+" "+x.source+" "+x.winner).toLowerCase().includes(q));
- document.getElementById("lootTable").innerHTML=rows.length?rows.map(x=>`<tr><td><div class="item">${esc(x.item)}</div></td><td>${esc(x.source||"—")}</td><td>${esc(x.date)}</td><td><b>${esc(x.winner)}</b></td><td class="price">${fmt(x.price)} DKP</td><td><span class="badge ${x.status==="Выдан"?"accepted":"cancelled"}">${esc(x.status)}</span></td><td><button class="btn" onclick="lootDetails(${x.id})">Подробнее</button></td></tr>`).join(""):'<tr><td colspan="7" class="empty">Лут пока не выдавался.</td></tr>';
- const catName={armor:"Броня",weapon:"Оружие",accessory:"Аксессуары",other:"Прочее"},canStaff=canManagePlayers(),isAdmin=currentProfile?.role==="admin";
+ const catName={armor:"Броня",weapon:"Оружие",accessory:"Аксессуары",other:"Прочее"};
+ const q=(document.getElementById("lootSearch")?.value||"").trim().toLowerCase();
+ const historyStatus=document.getElementById("lootHistoryStatus")?.value||"";
+ const rows=[...loot].filter(x=>(x.item+" "+x.source+" "+x.winner).toLowerCase().includes(q)&&(!historyStatus||x.status===historyStatus)).sort((a,b)=>new Date(b.raw_date||0)-new Date(a.raw_date||0));
+ lootHistoryPage=Math.min(Math.max(1,lootHistoryPage),Math.max(1,Math.ceil(rows.length/LOOT_PAGE_SIZE)));
+ document.getElementById("lootTable").innerHTML=rows.length?rows.slice((lootHistoryPage-1)*LOOT_PAGE_SIZE,lootHistoryPage*LOOT_PAGE_SIZE).map(x=>`<tr><td><div class="item">${esc(x.item)}</div></td><td>${esc(x.source||"—")}</td><td>${esc(x.date)}</td><td><b>${esc(x.winner)}</b></td><td class="price">${fmt(x.price)} DKP</td><td><span class="badge ${x.status==="Выдан"?"accepted":"cancelled"}">${esc(x.status)}</span></td><td><button class="btn" onclick="lootDetails(${x.id})">Подробнее</button></td></tr>`).join(""):'<tr><td colspan="7" class="empty">Записей не найдено.</td></tr>';
+ lootPager('lootHistoryPager',lootHistoryPage,rows.length,'history');
+ const canStaff=canManagePlayers(),isAdmin=currentProfile?.role==="admin";
  const me=players.find(p=>p.id===Number(currentProfile?.player_id));
  const pendingMine=new Set(lootRequests.filter(r=>r.status==="pending"&&Number(r.player_id)===Number(me?.id)).map(r=>Number(r.item_id)));
+ const stockQ=(document.getElementById("lootStockSearch")?.value||"").trim().toLowerCase();
+ const category=document.getElementById("lootCategory")?.value||"";
+ const race=document.getElementById("lootRace")?.value||"";
  const availableItems=lootItems.filter(x=>stockRemaining(x)>0);
+ const filtered=availableItems.filter(x=>(!category||x.category===category)&&(!race||String(x.race||'').toLowerCase()===race.toLowerCase())&&[x.name,x.item_type,x.grade,x.notes,x.item_level].some(v=>String(v??'').toLowerCase().includes(stockQ))).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ru'));
+ lootStockPage=Math.min(Math.max(1,lootStockPage),Math.max(1,Math.ceil(filtered.length/LOOT_PAGE_SIZE)));
  document.getElementById("catalogCount").textContent=`${availableItems.length} доступно`;
- document.getElementById("catalogTable").innerHTML=availableItems.length?availableItems.map(x=>{
-   let playerAction="";
-   if(me){
-     const already=pendingMine.has(Number(x.id)),enough=me.dkp>=Number(x.default_cost);
-     playerAction=`<button class="btn ${enough&&!already?"primary":""}" ${enough&&!already?`onclick="requestLoot(${x.id})"`:"disabled"}>${already?"Заявка отправлена":enough?"Хочу забрать":"Не хватает DKP"}</button>`;
-   }
-   return `<tr><td><b>${esc(x.name)}</b></td><td>${catName[x.category]||esc(x.category)}</td><td>${esc(x.item_type)}</td><td>${esc(x.grade||"—")}</td><td>${x.enhancement===null||x.enhancement===undefined?"—":x.enhancement===0?"0":"+"+x.enhancement}</td><td>${esc(x.race)}</td><td>${x.item_level??"—"}</td><td class="cyan"><b>${fmt(x.default_cost)} DKP</b><div class="sub">Выдано: ${stockIssued(x)}/${x.stock_total||1} • Осталось: ${stockRemaining(x)}</div></td><td><div class="actions">${playerAction}${canStaff?`<button class="btn" onclick="editLootItem(${x.id})">Изменить</button>`:""}${isAdmin?`<button class="btn danger" onclick="deleteLootItem(${x.id})">Удалить</button>`:""}</div></td></tr>`;
- }).join(""):'<tr><td colspan="9" class="empty">Список пуст. Admin/Officer может добавить первый предмет.</td></tr>';
+ document.getElementById("lootSummaryStock").textContent=availableItems.length;
+ document.getElementById("lootSummaryPending").textContent=lootRequests.filter(r=>r.status==='pending').length;
+ document.getElementById("lootSummaryIssued").textContent=loot.filter(x=>x.status==='Выдан').length;
+ document.getElementById("lootTabPending").textContent=lootRequests.filter(r=>r.status==='pending').length;
+ document.getElementById("catalogTable").innerHTML=filtered.length?filtered.slice((lootStockPage-1)*LOOT_PAGE_SIZE,lootStockPage*LOOT_PAGE_SIZE).map(x=>{
+  let playerAction='';
+  if(me){const already=pendingMine.has(Number(x.id)),enough=me.dkp>=Number(x.default_cost);playerAction=`<button class="btn ${enough&&!already?'primary':''}" ${enough&&!already?`onclick="requestLoot(${x.id})"`:'disabled'}>${already?'Заявка отправлена':enough?'Хочу забрать':'Не хватает DKP'}</button>`;}
+  const total=Math.max(1,Number(x.stock_total)||1),issued=stockIssued(x),remaining=stockRemaining(x);
+  const details=[x.item_type,x.grade,x.enhancement===null||x.enhancement===undefined?null:(x.enhancement===0?'0':'+'+x.enhancement),x.race,x.item_level?x.item_level+' ур.':null].filter(Boolean).map(esc).join(' · ');
+  return `<tr><td><div class="loot-item-name">${esc(x.name)}</div><div class="loot-item-meta">${details||esc(x.notes||'Без характеристик')}</div></td><td>${catName[x.category]||esc(x.category)}</td><td class="cyan"><b>${fmt(x.default_cost)} DKP</b></td><td><div class="loot-stock">${remaining} / ${total}</div><div class="loot-stock-bar"><i style="width:${Math.max(0,Math.min(100,remaining/total*100))}%"></i></div><div class="loot-item-meta">Выдано: ${issued}</div></td><td><div class="actions">${playerAction}${canStaff?`<button class="btn" onclick="editLootItem(${x.id})">Изменить</button>`:''}${isAdmin?`<button class="btn danger" onclick="deleteLootItem(${x.id})">Удалить</button>`:''}</div></td></tr>`;
+ }).join(''):'<tr><td colspan="5" class="empty">Нет предметов по выбранным фильтрам.</td></tr>';
+ lootPager('lootStockPager',lootStockPage,filtered.length,'stock');
  renderLootRequests();
 }
 
@@ -822,13 +861,15 @@ function lootRequestStatus(s){return s==="pending"?"Ожидает":s==="approve
 function renderLootRequests(){
  const body=document.getElementById("lootRequestsTable"),badge=document.getElementById("lootRequestCount");if(!body||!badge)return;
  const canStaff=canManagePlayers();
- const arr=[...lootRequests].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+ const arr=[...lootRequests].sort((a,b)=>(a.status==="pending"?0:1)-(b.status==="pending"?0:1)||new Date(b.created_at)-new Date(a.created_at));
+ lootRequestsPage=Math.min(Math.max(1,lootRequestsPage),Math.max(1,Math.ceil(arr.length/LOOT_PAGE_SIZE)));
  const pending=arr.filter(r=>r.status==="pending").length;badge.textContent=pending;
- body.innerHTML=arr.length?arr.map(r=>{
+ body.innerHTML=arr.length?arr.slice((lootRequestsPage-1)*LOOT_PAGE_SIZE,lootRequestsPage*LOOT_PAGE_SIZE).map(r=>{
    const p=players.find(x=>x.id===Number(r.player_id)),item=lootItems.find(x=>x.id===Number(r.item_id));
    const actions=canStaff&&r.status==="pending"?`<div class="actions"><button class="btn primary" onclick="approveLootRequest(${r.id})">Выдано</button><button class="btn danger" onclick="rejectLootRequest(${r.id})">Отклонить</button></div>`:`<button class="btn" onclick="lootRequestDetails(${r.id})">Подробнее</button>`;
    return `<tr><td>${fmtDate(r.created_at)}</td><td><b>${esc(p?.name||"#"+r.player_id)}</b></td><td><b>${esc(item?.name||"#"+r.item_id)}</b><div class="sub">${esc(item?.item_type||"")}${item?.grade?" • "+esc(item.grade):""}</div></td><td class="cyan"><b>${fmt(r.requested_cost)} DKP</b></td><td><span class="badge ${r.status==="approved"?"accepted":r.status==="pending"?"pending":"cancelled"}">${lootRequestStatus(r.status)}</span></td><td>${actions}</td></tr>`;
  }).join(""):'<tr><td colspan="6" class="empty">Заявок пока нет.</td></tr>';
+ lootPager('lootRequestsPager',lootRequestsPage,arr.length,'requests');
 }
 function lootRequestDetails(id){
  const r=lootRequests.find(x=>Number(x.id)===Number(id));if(!r)return;
