@@ -817,22 +817,30 @@ async function saveEventPlan(e){e.preventDefault();if(!canManagePlayers())return
 async function cancelEventPlan(id){if(!canManagePlayers())return toast('Недостаточно прав');if(!confirm('Удалить это запланированное событие из расписания?'))return;const {error}=await db.rpc('cancel_event_plan',{p_plan_id:id});if(error)return toast('Ошибка: '+error.message);toast('План удалён');await loadData()}
 function renderEventPlans(){const box=document.getElementById('eventPlansList');if(!box)return;const upcoming=eventPlans.filter(x=>x.status==='planned').sort((a,b)=>new Date(a.event_date)-new Date(b.event_date));box.innerHTML=upcoming.length?upcoming.map(x=>`<div class="participant" style="align-items:center;gap:14px"><div style="flex:1;min-width:0"><b>${esc(x.name)}</b><div class="sub">${fmtDate(x.event_date)}${x.description?' • '+esc(x.description):''}</div></div><span class="badge pending">ЗАПЛАНИРОВАНО</span>${canManagePlayers()?`<button class="btn danger" onclick="cancelEventPlan(${x.id})">УДАЛИТЬ</button>`:''}</div>`).join(''):'<div class="empty">Запланированных событий пока нет.</div>'}
 
-// v8.9.2: show today's planned guild activities once per user per Kyiv calendar day.
+// v8.9.3: show today's planned guild activities only after an explicit page reload (F5/Ctrl+R/browser refresh).
 async function maybeShowTodayPlansPopup(){
  try{
-  const {data,error}=await db.rpc('claim_today_event_plan_popup');
-  if(error)throw error;
-  const plans=Array.isArray(data)?data:[];
+  const nav=performance.getEntriesByType?performance.getEntriesByType('navigation')[0]:null;
+  const isReload=nav?nav.type==='reload':(performance.navigation&&performance.navigation.type===1);
+  if(!isReload)return;
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const today=Object.fromEntries(parts.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  const todayKey=`${today.year}-${today.month}-${today.day}`;
+  const dateKey=value=>{
+   const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+   const o=Object.fromEntries(p.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+   return `${o.year}-${o.month}-${o.day}`;
+  };
+  const plans=(eventPlans||[]).filter(p=>p.status==='planned'&&p.event_date&&dateKey(p.event_date)===todayKey)
+   .sort((a,b)=>new Date(a.event_date)-new Date(b.event_date));
   if(!plans.length)return;
   const timeFmt=new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Kyiv',hour:'2-digit',minute:'2-digit',hour12:false});
-  const dateFmt=new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Kyiv',day:'2-digit',month:'long'});
   const rows=plans.map(p=>{
-   const d=new Date(p.plan_event_date);
+   const d=new Date(p.event_date);
    const time=Number.isNaN(d.getTime())?'—':timeFmt.format(d);
-   const date=Number.isNaN(d.getTime())?'':dateFmt.format(d);
-   return `<div class="today-plan-row"><div class="today-plan-time">${esc(time)}</div><div class="today-plan-info"><b>${esc(p.plan_name)}</b>${p.plan_description?`<div class="sub">${esc(p.plan_description)}</div>`:''}</div><div class="today-plan-date">${esc(date)}</div></div>`;
+   return `<div class="today-plan-row"><div class="today-plan-time">${esc(time)}</div><div class="today-plan-info"><b>${esc(p.name)}</b>${p.description?`<div class="sub">${esc(p.description)}</div>`:''}</div></div>`;
   }).join('');
-  showModal('АКТИВНОСТИ НА СЕГОДНЯ','Расписание гильдии • время Киева',`<div class="today-plans-list">${rows}</div><div class="sub" style="margin-top:14px">Это напоминание о запланированных ПБ и других активностях. Начисление DKP оформляется отдельно после события.</div><div class="modal-actions"><button class="btn primary" onclick="closeModal()">ПОНЯТНО</button></div>`);
+  showModal('АКТИВНОСТИ НА СЕГОДНЯ','Расписание гильдии • время Киева',`<div class="today-plans-list">${rows}</div><div class="sub" style="margin-top:14px">Это напоминание о запланированных ПБ и других активностях. Начисление DKP оформляется отдельно после события.</div><div class="modal-actions"><button class="btn primary" onclick="closeModal()">ОК</button></div>`);
  }catch(e){console.warn('Today event plans popup:',e);}
 }
 
