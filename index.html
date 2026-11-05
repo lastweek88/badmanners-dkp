@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<meta name="bm-version" content="8.9.2-daily-plan-popup">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BadManners DKP Manager v4</title>
@@ -196,6 +197,14 @@ h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 
 /* BadManners Loot Workspace */
 .loot-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}.loot-summary>div{background:#0d131b;border:1px solid #26323e;padding:15px 17px;display:flex;flex-direction:column;gap:8px}.loot-summary small{font-size:10px;color:#93a5b4;letter-spacing:.11em}.loot-summary strong{font-size:25px;color:#f0f4f6}.loot-summary>div:nth-child(2) strong{color:#d7ae54}.loot-tabs{display:flex;gap:5px;border-bottom:1px solid #34404c;margin:20px 0}.loot-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;color:#a4b1bd;padding:13px 19px;font-size:12px;font-weight:700;letter-spacing:.04em}.loot-tabs button.active{border-bottom-color:#a0ff21;color:#f5f8fa;background:#141b20}.loot-tabs button:hover{color:#fff;background:#171b20}.loot-tabs span{background:#302817;color:#edc66a;padding:2px 6px;margin-left:4px}.loot-pane[hidden]{display:none!important}.loot-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:17px 0}.loot-head h2{margin:0 0 5px;font-size:15px;color:#e9f0f4}.loot-head p{margin:0;color:#8997a3;font-size:11px}.loot-filters{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.loot-filters .input{flex:1 1 260px}.loot-filters .select{flex:0 1 180px}.loot-table td{vertical-align:middle}.loot-item-name{font-size:12px;color:#f4f5f6;font-weight:700}.loot-item-meta{font-size:10px;color:#a0afbb;margin-top:5px;line-height:1.6}.loot-stock{font-size:12px;font-weight:700;color:#d8e4ed}.loot-stock-bar{height:4px;width:90px;max-width:100%;background:#28333a;margin-top:6px}.loot-stock-bar>i{display:block;height:100%;background:#a0ff21}.loot-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:13px 0;color:#a1aeb8;font-size:11px}.loot-pager .actions{align-items:center}.loot-pager button:disabled{opacity:.35;cursor:default}.loot-hidden{display:none}@media(max-width:700px){.loot-summary{gap:6px}.loot-summary>div{padding:9px}.loot-summary strong{font-size:20px}.loot-summary small{font-size:8px}.loot-tabs button{padding:11px 8px;font-size:10px}.loot-head{align-items:flex-start;flex-direction:column}.loot-filters .select{flex:1 1 140px}}
+
+/* v8.9.2 — daily planned activities popup */
+.modal-actions{display:flex;gap:8px;align-items:center;margin-top:18px}.today-plans-list{display:flex;flex-direction:column;gap:8px;max-height:min(55vh,520px);overflow:auto}
+.today-plan-row{display:flex;align-items:center;gap:14px;padding:14px;background:#0d1722;border:1px solid #263746;border-left:3px solid #a0ff21;border-radius:2px}
+.today-plan-time{min-width:58px;color:#a0ff21;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
+.today-plan-info{flex:1;min-width:0;color:#f3f6f8;font-size:14px}
+.today-plan-date{color:#7f96a5;font-size:10px;white-space:nowrap;text-transform:uppercase}
+@media(max-width:600px){.today-plan-row{gap:9px;padding:11px}.today-plan-time{min-width:48px;font-size:16px}.today-plan-info{font-size:12px}.today-plan-date{font-size:9px}}
 </style>
 </head>
 <body>
@@ -807,6 +816,26 @@ function newEventPlan(){if(!canManagePlayers())return toast('Недостато�
 async function saveEventPlan(e){e.preventDefault();if(!canManagePlayers())return toast('Недостаточно прав');const name=document.getElementById('planName').value.trim(),description=document.getElementById('planDescription').value.trim()||null,raw=document.getElementById('planDate').value;if(!name||!raw)return toast('Заполните название и дату');const date=new Date(raw);if(Number.isNaN(date.getTime())||date.getTime()<=Date.now())return toast('Для расписания выберите будущую дату и время');const btn=document.getElementById('planSaveBtn');btn.disabled=true;btn.textContent='Сохранение...';const {error}=await db.rpc('create_event_plan',{p_name:name,p_description:description,p_event_date:date.toISOString()});if(error){btn.disabled=false;btn.textContent='СОХРАНИТЬ ПЛАН';return toast('Ошибка: '+error.message)}closeModal();toast('Событие добавлено в расписание');await loadData()}
 async function cancelEventPlan(id){if(!canManagePlayers())return toast('Недостаточно прав');if(!confirm('Удалить это запланированное событие из расписания?'))return;const {error}=await db.rpc('cancel_event_plan',{p_plan_id:id});if(error)return toast('Ошибка: '+error.message);toast('План удалён');await loadData()}
 function renderEventPlans(){const box=document.getElementById('eventPlansList');if(!box)return;const upcoming=eventPlans.filter(x=>x.status==='planned').sort((a,b)=>new Date(a.event_date)-new Date(b.event_date));box.innerHTML=upcoming.length?upcoming.map(x=>`<div class="participant" style="align-items:center;gap:14px"><div style="flex:1;min-width:0"><b>${esc(x.name)}</b><div class="sub">${fmtDate(x.event_date)}${x.description?' • '+esc(x.description):''}</div></div><span class="badge pending">ЗАПЛАНИРОВАНО</span>${canManagePlayers()?`<button class="btn danger" onclick="cancelEventPlan(${x.id})">УДАЛИТЬ</button>`:''}</div>`).join(''):'<div class="empty">Запланированных событий пока нет.</div>'}
+
+// v8.9.2: show today's planned guild activities once per user per Kyiv calendar day.
+async function maybeShowTodayPlansPopup(){
+ try{
+  const {data,error}=await db.rpc('claim_today_event_plan_popup');
+  if(error)throw error;
+  const plans=Array.isArray(data)?data:[];
+  if(!plans.length)return;
+  const timeFmt=new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Kyiv',hour:'2-digit',minute:'2-digit',hour12:false});
+  const dateFmt=new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Kyiv',day:'2-digit',month:'long'});
+  const rows=plans.map(p=>{
+   const d=new Date(p.plan_event_date);
+   const time=Number.isNaN(d.getTime())?'—':timeFmt.format(d);
+   const date=Number.isNaN(d.getTime())?'':dateFmt.format(d);
+   return `<div class="today-plan-row"><div class="today-plan-time">${esc(time)}</div><div class="today-plan-info"><b>${esc(p.plan_name)}</b>${p.plan_description?`<div class="sub">${esc(p.plan_description)}</div>`:''}</div><div class="today-plan-date">${esc(date)}</div></div>`;
+  }).join('');
+  showModal('АКТИВНОСТИ НА СЕГОДНЯ','Расписание гильдии • время Киева',`<div class="today-plans-list">${rows}</div><div class="sub" style="margin-top:14px">Это напоминание о запланированных ПБ и других активностях. Начисление DKP оформляется отдельно после события.</div><div class="modal-actions"><button class="btn primary" onclick="closeModal()">ПОНЯТНО</button></div>`);
+ }catch(e){console.warn('Today event plans popup:',e);}
+}
+
 function newEvent(){
  if(!canManagePlayers())return toast("Недостаточно прав");
  if(!players.length)return toast("Сначала добавьте хотя бы одного игрока");
@@ -1038,7 +1067,7 @@ async function openSession(session){
  if(error||!data){await db.auth.signOut();document.getElementById("authError").textContent="Для пользователя не найден профиль в таблице profiles.";return}
  currentProfile=data;document.getElementById("userName").textContent=data.nickname||currentUser.email;document.getElementById("userAvatar").textContent=initials(data.nickname||"BM");document.getElementById("userRole").textContent=(data.role||"player").toUpperCase();document.querySelectorAll(".staff-only").forEach(el=>el.style.display=["admin","officer"].includes(data.role)?"":"none");document.getElementById("authScreen").classList.add("hidden");
  const hashPage=(location.hash||"").replace("#","");const saved=(hashPage&&document.getElementById(hashPage))?hashPage:localStorage.getItem("bm_active_page");if(saved&&document.getElementById(saved))go(saved);
- try{await refreshAccountLinks();await loadData();setupRealtime();startAuctionPolling()}catch(e){toast("Ошибка загрузки: "+e.message)}
+ try{await refreshAccountLinks();await loadData();await maybeShowTodayPlansPopup();setupRealtime();startAuctionPolling()}catch(e){toast("Ошибка загрузки: "+e.message)}
 }
 async function logout(){if(realtimeChannel)await db.removeChannel(realtimeChannel);await db.auth.signOut();location.reload()}
 document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();const btn=document.getElementById("loginBtn"),err=document.getElementById("authError");btn.disabled=true;btn.textContent="Вход...";err.textContent="";const {data,error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});btn.disabled=false;btn.textContent="Войти";if(error){err.textContent="Не удалось войти: "+error.message;return}await openSession(data.session)});
