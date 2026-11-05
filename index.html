@@ -840,7 +840,7 @@ async function maybeShowTodayPlansPopup(){
    const time=Number.isNaN(d.getTime())?'—':timeFmt.format(d);
    return `<div class="today-plan-row"><div class="today-plan-time">${esc(time)}</div><div class="today-plan-info"><b>${esc(p.name)}</b>${p.description?`<div class="sub">${esc(p.description)}</div>`:''}</div></div>`;
   }).join('');
-  showModal('АКТИВНОСТИ НА СЕГОДНЯ','Расписание гильдии • время Киева',`<div class="today-plans-list">${rows}</div><div class="sub" style="margin-top:14px">Это напоминание о запланированных ПБ и других активностях. Начисление DKP оформляется отдельно после события.</div><div class="modal-actions"><button class="btn primary" onclick="closeModal()">ОК</button></div>`);
+  showModal('АКТИВНОСТИ НА СЕГОДНЯ','',`<div class="today-plans-list">${rows}</div><div class="modal-actions"><button class="btn primary" onclick="closeModal()">ОК</button></div>`);
  }catch(e){console.warn('Today event plans popup:',e);}
 }
 
